@@ -119,6 +119,15 @@ async def cmd_nsfw(message: types.Message):
     with open("users.mpk", "wb") as f:
         f.write(msgspec.msgpack.encode(users))
 
+@dp.message(Command("n"))
+async def cmd_n(message: types.Message):
+    with open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    user = users.get_user(message.from_user.id)
+    user.generation_settings.n = int(message.text.split()[1])
+    with open("users.mpk", "wb") as f:
+        f.write(msgspec.msgpack.encode(users))
+
 @dp.message(Command("model"))
 async def cmd_model(message: types.Message):
     request = message.text.replace("/model ", "")
@@ -206,6 +215,13 @@ async def cmd_image(message: types.Message):
         else:
             await asyncio.sleep(status.wait_time)
 
+    with open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode(f.read, type=models.Users)
+    user = users.get_user(message.from_user.id)
+    user.queued = False
+    with open("users.mpk", "wb") as f:
+        f.write(msgspec.msgpack.encode(users))
+
     img_status = await horde.generate_status(request.id)
     generations = img_status.generations
     for num, generation in enumerate(generations):
@@ -217,12 +233,6 @@ async def cmd_image(message: types.Message):
                 if resp.status == 200:
                     async with aiofiles.open(path, "wb") as f:
                         f.write(await resp.read())
-    with open("users.mpk", "rb") as f:
-        users = msgspec.msgpack.decode(f.read, type=models.Users)
-    user = users.get_user(message.from_user.id)
-    user.queued = False
-    with open("users.mpk", "wb") as f:
-        f.write(msgspec.msgpack.encode(users))
 
 @dp.message(Command("models"))
 async def cmd_models(message: types.Message):
