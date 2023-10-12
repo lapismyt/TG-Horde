@@ -129,7 +129,7 @@ async def cmd_premium(message: types.Message):
         users = msgspec.msgpack.decode(f.read(), type=models.Users)
     user = users.get_user(message.from_user.id)
     if message.from_user.id == int(admin):
-        usr = users.get_user(int(messsge.text.split()[1]))
+        usr = users.get_user(int(messsage.text.split()[1]))
         if usr.premium:
             usr.premium = False
             await bot.send_message(usr.id, "У вас теперь есть премиум.")
