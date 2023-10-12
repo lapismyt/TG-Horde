@@ -148,13 +148,16 @@ async def cmd_model(message: types.Message):
 
 @dp.message(Command("image"))
 async def cmd_image(message: types.Message):
-    msg = await message.answer("Подождите...")
-
-    f = open("users.mpk", "rb")
-    users = msgspec.msgpack.decode(f.read(), type=models.Users)
-    f.close()
-
+    with open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode(f.read, type=models.Users)
     user = users.get_user(message.from_user.id)
+    if user.queued:
+        await message.answer("Сначала дождись окончания генерации.")
+        return None
+    user.queued = True
+    with open("users.mpk", "wb") as f:
+        f.write(msgspec.msgpack.encode(users))
+    msg = await message.answer("Подождите...")
     
     if user.generation_settings.loras is not None:
         loras = []
@@ -212,6 +215,12 @@ async def cmd_image(message: types.Message):
                 if resp.status == 200:
                     async with aiofiles.open(path, "wb") as f:
                         f.write(await resp.read())
+    with open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode(f.read, type=models.Users)
+    user = users.get_user(message.from_user.id)
+    user.queued = False
+    with open("users.mpk", "wb") as f:
+        f.write(msgspec.msgpack.encode(users))
 
 @dp.message(Command("models"))
 async def cmd_models(message: types.Message):
