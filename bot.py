@@ -81,6 +81,10 @@ async def cmd_lora(message: types.Message):
         user.generation_settings.loras = loras
         with open("users.mpk", "wb") as f:
             f.write(msgspec.msgpack.encode(users))
+        resp = f"Активные LoRA:\n\n"
+        for lora in loras:
+            resp += f"{lora.name}:{lora.strength}\n"
+        await message.answer(resp)
 
 @dp.message(Command("add_lora"))
 async def cmd_add_lora(message: types.Message):
