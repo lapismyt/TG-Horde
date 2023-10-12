@@ -149,7 +149,7 @@ async def cmd_model(message: types.Message):
 @dp.message(Command("image"))
 async def cmd_image(message: types.Message):
     with open("users.mpk", "rb") as f:
-        users = msgspec.msgpack.decode(f.read, type=models.Users)
+        users = msgspec.msgpack.decode(f.read(), type=models.Users)
     user = users.get_user(message.from_user.id)
     if user.queued:
         await message.answer("Сначала дождись окончания генерации.")
