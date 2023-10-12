@@ -174,6 +174,7 @@ async def cmd_image(message: types.Message):
         steps = user.generation_settings.steps,
         karras = True,
         loras = loras,
+        n = user.generation_settings.n
     )
 
     payload = GenerationInput(
@@ -182,8 +183,7 @@ async def cmd_image(message: types.Message):
         nsfw = user.generation_settings.nsfw,
         censor_nsfw = not user.generation_settings.nsfw,
         models = [user.generation_settings.model],
-        r2 = True,
-        n = user.generation_settings.n
+        r2 = True
     )
 
     request = await horde.txt2img_request(payload)
