@@ -1,3 +1,4 @@
 git+https://github.com/lapismyt/StableHordeAPI.py
 aiogram>=3.0.0
 msgspec
+aiofiles
