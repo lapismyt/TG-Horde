@@ -87,6 +87,10 @@ async def cmd_lora(message: types.Message):
             resp += f"{lora.name}:{lora.strength}\n"
         await message.answer(resp)
 
+@dp.message(Command("help"))
+async def cmd_help(message: types.Message):
+    await message.answer("Тут пока что ничего нет, пишите @LapisMYT")
+
 @dp.message(Command("add_lora"))
 async def cmd_add_lora(message: types.Message):
     if "civitai.com/models/" in message.text:
@@ -119,10 +123,13 @@ async def cmd_model(message: types.Message):
     request = message.text.replace("/model ", "")
     active_models = await horde.get_models(ActiveModelsRequest())
     model = None
+    possible = []
     for m in active_models:
         if m.name.lower() == request.lower():
             model = m.name
             break
+        elif request.lower() in m.name.lower():
+            possible.append(m.name)
     if model is not None:
         with open("users.mpk", "rb") as f:
             users = msgspec.msgpack.decode(f.read(), type=models.Users)
@@ -131,10 +138,17 @@ async def cmd_model(message: types.Message):
         with open("users.mpk", "wb") as f:
             users = msgspec.msgpack.encode(users)
             f.write(users)
-    else: await message.answer("Модель не найдена: " + request)
+    else:
+        additional = f""
+        if len(possible) >= 1:
+            additional += f"Возможно, вы имели ввиду:\n"
+            for pm in possible:
+                additional += pm
+        await message.answer(f"Модель не найдена: {request}\n\n{additional}")
 
 @dp.message(Command("image"))
 async def cmd_image(message: types.Message):
+    msg = await message.answer("Подождите...")
 
     f = open("users.mpk", "rb")
     users = msgspec.msgpack.decode(f.read(), type=models.Users)
@@ -168,7 +182,7 @@ async def cmd_image(message: types.Message):
     )
 
     request = await horde.txt2img_request(payload)
-    await asyncio.sleep(3)
+    await asyncio.sleep(5)
     status = await horde.generate_check(request.id)
     eta = status.wait_time
     position = status.queue_position
@@ -177,7 +191,7 @@ async def cmd_image(message: types.Message):
     response += f"Вы на {str(position)} месте в очереди.\n"
     response += f"Ожидайте ~{str(datetime.timedelta(seconds=eta))}.\n\n"
     response += f"ID запроса: {hcode(request.id)}."
-    tmp_msg = await message.answer(response)
+    await msg.edit_text(response)
 
     finished = False
     while not finished:
@@ -192,7 +206,7 @@ async def cmd_image(message: types.Message):
     for num, generation in enumerate(generations):
         path = "{str(int(time.time()))}_{str(num)}.webp"
         await message.answer_photo(generation.img)
-        await tmp_msg.delete()
+        await msg.delete()
         async with aiohttp.ClientSession() as session:
             async with session.get(generation.img) as resp:
                 if resp.status == 200:
