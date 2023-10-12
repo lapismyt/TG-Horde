@@ -143,7 +143,7 @@ async def cmd_model(message: types.Message):
         if len(possible) >= 1:
             additional += f"Возможно, вы имели ввиду:\n"
             for pm in possible:
-                additional += pm
+                additional += f"{pm}\n"
         await message.answer(f"Модель не найдена: {request}\n\n{additional}")
 
 @dp.message(Command("image"))
