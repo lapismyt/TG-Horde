@@ -186,6 +186,10 @@ async def cmd_model(message: types.Message):
                 additional += f"{pm}\n"
         await message.answer(f"Модель не найдена: {request}\n\n{additional}")
 
+@db.message(Command("lorad"))
+async def cmd_loras(message: types.Message):
+    await message.answer_document(open("loras.txt"))
+
 @dp.message(Command("image"))
 async def cmd_image(message: types.Message):
     with open("users.mpk", "rb") as f:
@@ -219,7 +223,7 @@ async def cmd_image(message: types.Message):
     )
 
     payload = GenerationInput(
-        message.text.replace("/image ", ""),
+        prompt = message.text.replace("/image ", ""),
         params = params,
         nsfw = user.generation_settings.nsfw,
         censor_nsfw = not user.generation_settings.nsfw,
