@@ -128,9 +128,16 @@ async def cmd_premium(message: types.Message):
     with open("users.mpk", "rb") as f:
         users = msgspec.msgpack.decode(f.read(), type=models.Users)
     user = users.get_user(message.from_user.id)
-    if user.admin:
+    if message.from_user.id == int(admin):
         usr = users.get_user(int(messsge.text.split()[1]))
-        usr.premium = not user.premium
+        if usr.premium:
+            usr.premium = False
+            await bot.send_message(usr.id, "У вас теперь есть премиум.")
+            await message.answer(f"У пользователя {str(usr.id)} теперь есть премиум.")
+        else:
+            usr.premium = True
+            await bot.send_message(usr.id, "У вас болбше нету премиума.")
+            await message.answer(f"У пользователя {str(usr.id)} больше нету премиума.")
         with open("users.mpk", "wb") as f:
             f.write(msgspec.msgpack.encode(users))
 
@@ -139,8 +146,15 @@ async def cmd_n(message: types.Message):
     with open("users.mpk", "rb") as f:
         users = msgspec.msgpack.decode(f.read(), type=models.Users)
     user = users.get_user(message.from_user.id)
+    if len(message.text.split()) != 2:
+        await message.answer("Количество генерируемых изображений за раз: " + str(user.generation_settings.n) + ".")
     if user.premium:
-        user.generation_settings.n = int(message.text.split()[1])
+        n = int(message.text.split()[1])
+        if 1 <= number <= 10:
+            user.generation_settings.n = n
+        await message.answer("Количество генерируемых изображений за раз: " + str(user.generation_settings.n) + ".")
+    else:
+        await message.answer("Для этого нужен премиум.")
     with open("users.mpk", "wb") as f:
         f.write(msgspec.msgpack.encode(users))
 
