@@ -188,7 +188,8 @@ async def cmd_model(message: types.Message):
 
 @dp.message(Command("loras"))
 async def cmd_loras(message: types.Message):
-    await message.answer_document(open("loras.txt", "rb"))
+    file = types.input_file.FSInputFile()"loras.txt"
+    await message.answer_document(file)
 
 @dp.message(Command("image"))
 async def cmd_image(message: types.Message):
