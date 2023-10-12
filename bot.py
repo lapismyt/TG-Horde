@@ -184,8 +184,14 @@ async def cmd_image(message: types.Message):
     img_status = await horde.generate_status(request.id)
     generations = img_status.generations
     for num, generation in enumerate(generations):
+        path = "{str(int(time.time()))}_{str(num)}.webp"
         await message.answer_photo(generation.img)
         await tmp_msg.delete()
+        async with aiohttp.ClientSession() as session:
+            async with session.get(generation.img) as resp:
+                if resp.status == 200:
+                    async with aiofiles.open(path, "wb") as f:
+                        f.write(await resp.read())
 
 @dp.message(Command("models"))
 async def cmd_models(message: types.Message):
