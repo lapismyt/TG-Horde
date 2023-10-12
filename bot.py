@@ -245,6 +245,12 @@ async def main():
     global horde
     horde = StableHordeAPI(horde_api_key)
     logging.basicConfig(level=logging.INFO)
+    with open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    for usr in users:
+        usr.queued = False
+    with open("users.mpk", "wb") as f:
+        f.write(msgspec.msgpack.encode(users))
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
