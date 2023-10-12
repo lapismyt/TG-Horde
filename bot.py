@@ -224,7 +224,8 @@ async def cmd_image(message: types.Message):
         nsfw = user.generation_settings.nsfw,
         censor_nsfw = not user.generation_settings.nsfw,
         models = [user.generation_settings.model],
-        r2 = True
+        r2 = True,
+        slow_workers = False
     )
 
     request = await horde.txt2img_request(payload)
