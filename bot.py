@@ -247,7 +247,7 @@ async def main():
     logging.basicConfig(level=logging.INFO)
     with open("users.mpk", "rb") as f:
         users = msgspec.msgpack.decode(f.read(), type=models.Users)
-    for usr in users:
+    for usr in users.all:
         usr.queued = False
     with open("users.mpk", "wb") as f:
         f.write(msgspec.msgpack.encode(users))
