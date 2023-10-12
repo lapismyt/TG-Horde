@@ -136,7 +136,7 @@ async def cmd_premium(message: types.Message):
             await message.answer(f"У пользователя {str(usr.id)} теперь есть премиум.")
         else:
             usr.premium = True
-            await bot.send_message(usr.id, "У вас болбше нету премиума.")
+            await bot.send_message(usr.id, "У вас больше нету премиума.")
             await message.answer(f"У пользователя {str(usr.id)} больше нету премиума.")
         with open("users.mpk", "wb") as f:
             f.write(msgspec.msgpack.encode(users))
