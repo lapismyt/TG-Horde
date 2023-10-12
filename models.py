@@ -12,6 +12,7 @@ class GenerationSettings(msgspec.Struct):
     loras: list[LoraSettings] | None = None
     nsfw: bool = False
     model: str = "Deliberate"
+    n: int = 1
 
 class User(msgspec.Struct):
     id: int

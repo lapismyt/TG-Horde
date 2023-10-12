@@ -58,6 +58,7 @@ async def cmd_lora(message: types.Message):
             await message.answer(resp)
         else:
             await message.answer("У вас нет активных LoRA.")
+        return None
     if message.text.lower().replace("/lora ", "") == "clear":
         with open("users.mpk", "rb") as f:
             users = msgspec.msgpack.decode(f.read(), type=models.Users)
@@ -172,7 +173,7 @@ async def cmd_image(message: types.Message):
         width = user.generation_settings.width,
         steps = user.generation_settings.steps,
         karras = True,
-        loras = loras
+        loras = loras,
     )
 
     payload = GenerationInput(
@@ -181,7 +182,8 @@ async def cmd_image(message: types.Message):
         nsfw = user.generation_settings.nsfw,
         censor_nsfw = not user.generation_settings.nsfw,
         models = [user.generation_settings.model],
-        r2 = True
+        r2 = True,
+        n = user.generation_settings.n
     )
 
     request = await horde.txt2img_request(payload)
