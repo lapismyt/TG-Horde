@@ -130,12 +130,12 @@ async def cmd_premium(message: types.Message):
     user = users.get_user(message.from_user.id)
     if message.from_user.id == int(admin):
         usr = users.get_user(int(message.text.split()[1]))
-        if usr.premium:
-            usr.premium = False
+        if not usr.premium:
+            usr.premium = True
             await bot.send_message(usr.id, "У вас теперь есть премиум.")
             await message.answer(f"У пользователя {str(usr.id)} теперь есть премиум.")
         else:
-            usr.premium = True
+            usr.premium = False
             await bot.send_message(usr.id, "У вас больше нету премиума.")
             await message.answer(f"У пользователя {str(usr.id)} больше нету премиума.")
         with open("users.mpk", "wb") as f:
