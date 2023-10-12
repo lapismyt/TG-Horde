@@ -91,8 +91,9 @@ async def cmd_add_lora(message: types.Message):
         async with aiofiles.open("loras.txt", "a") as f:
             model_id = message.text.split()[1]
             await f.write(model_id + "\n")
+            await message.answer("LoRA добавлена.")
     else:
-        await message.answer("Использование:\n/add_lora <ссылка на CivitAI> [примечание от себя]")
+        await message.answer("Использование:\n/add_lora <ссылка на CivitAI> [примечание от себя].")
 
 @dp.message(Command("nsfw"))
 async def cmd_nsfw(message: types.Message):
