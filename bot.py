@@ -216,7 +216,7 @@ async def cmd_image(message: types.Message):
             await asyncio.sleep(status.wait_time)
 
     with open("users.mpk", "rb") as f:
-        users = msgspec.msgpack.decode(f.read, type=models.Users)
+        users = msgspec.msgpack.decode(f.read(), type=models.Users)
     user = users.get_user(message.from_user.id)
     user.queued = False
     with open("users.mpk", "wb") as f:
