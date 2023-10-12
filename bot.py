@@ -186,7 +186,7 @@ async def cmd_model(message: types.Message):
                 additional += f"{pm}\n"
         await message.answer(f"Модель не найдена: {request}\n\n{additional}")
 
-@dp.message(Command("lorad"))
+@dp.message(Command("loras"))
 async def cmd_loras(message: types.Message):
     await message.answer_document(open("loras.txt"))
 
