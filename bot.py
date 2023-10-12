@@ -119,12 +119,28 @@ async def cmd_nsfw(message: types.Message):
     with open("users.mpk", "wb") as f:
         f.write(msgspec.msgpack.encode(users))
 
+@dp.message(Command("getid"))
+async def cmd_getid(message: types.Message):
+    await message.answer(str(message.from_user.id))
+
+@dp.message(Command("premium"))
+async def cmd_premium(message: types.Message):
+    with open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    user = users.get_user(message.from_user.id)
+    if user.admin:
+        usr = users.get_user(int(messsge.text.split()[1]))
+        usr.premium = not user.premium
+        with open("users.mpk", "wb") as f:
+            f.write(msgspec.msgpack.encode(users))
+
 @dp.message(Command("n"))
 async def cmd_n(message: types.Message):
     with open("users.mpk", "rb") as f:
         users = msgspec.msgpack.decode(f.read(), type=models.Users)
     user = users.get_user(message.from_user.id)
-    user.generation_settings.n = int(message.text.split()[1])
+    if user.premium:
+        user.generation_settings.n = int(message.text.split()[1])
     with open("users.mpk", "wb") as f:
         f.write(msgspec.msgpack.encode(users))
 
@@ -164,6 +180,8 @@ async def cmd_image(message: types.Message):
     if user.queued:
         await message.answer("Сначала дождись окончания генерации.")
         return None
+    if message.text == "/image":
+        await message.answer("Нет запроса.")
     user.queued = True
     with open("users.mpk", "wb") as f:
         f.write(msgspec.msgpack.encode(users))
@@ -224,10 +242,10 @@ async def cmd_image(message: types.Message):
 
     img_status = await horde.generate_status(request.id)
     generations = img_status.generations
+    await msg.delete()
     for num, generation in enumerate(generations):
         path = "{str(int(time.time()))}_{str(num)}.webp"
         await message.answer_photo(generation.img)
-        await msg.delete()
         async with aiohttp.ClientSession() as session:
             async with session.get(generation.img) as resp:
                 async with aiofiles.open(path, "wb") as f:
