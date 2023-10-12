@@ -230,9 +230,8 @@ async def cmd_image(message: types.Message):
         await msg.delete()
         async with aiohttp.ClientSession() as session:
             async with session.get(generation.img) as resp:
-                if resp.status == 200:
-                    async with aiofiles.open(path, "wb") as f:
-                        f.write(await resp.read())
+                async with aiofiles.open(path, "wb") as f:
+                    f.write(await resp.content.read())
 
 @dp.message(Command("models"))
 async def cmd_models(message: types.Message):
