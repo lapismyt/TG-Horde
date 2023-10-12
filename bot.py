@@ -280,7 +280,7 @@ async def cmd_models(message: types.Message):
         result += f"{model.name}:\n"
         result += f"Количество воркеров: {str(model.count)}\n"
         result += f"Очередь: {str(int(model.queued) + int(model.jobs))}\n"
-        result += f"Время генерации: >{str(datetime.timedelta(seconds=model.eta*200))}\n\n"
+        result += f"Время генерации: >{str(datetime.timedelta(seconds=model.eta))}\n\n"
     await message.answer(result.strip())
 
 async def main():
