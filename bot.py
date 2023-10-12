@@ -72,7 +72,8 @@ async def cmd_lora(message: types.Message):
         await message.answer("Ошибка! Не удалось найти LoRA.")
     else:
         loras = []
-        for name, strength in selected:
+        for name in selected.keys():
+            strength = selected[name]
             lora = models.LoraSettings(name, strength)
             loras.append(lora)
         with open("users.mpk", "rb") as f:
