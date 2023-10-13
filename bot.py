@@ -321,11 +321,11 @@ async def cmd_steps(message: types.Message):
         users = msgspec.msgpack.decode(f.read(), type=models.Users)
     user = users.get_user(message.from_user.id)
     if message.text.lower() == "/cfg":
-        await message.answer("CFG Scale: " + str(user.generation_settings.steps))
+        await message.answer("CFG Scale: " + str(user.generation_settings.cfg_scale))
     elif message.text.lower().split()[1].isdigit():
         if 0 <= int(message.text.lower().split()[1]) <= 100:
-            user.generation_settings.steps = float(message.text.lower().split()[1])
-        await message.answer("CFG Scale: " + str(user.generation_settings.steps))
+            user.generation_settings.cfg_scale = float(message.text.lower().split()[1])
+        await message.answer("CFG Scale: " + str(user.generation_settings.cfg_scale))
     else:
             pass
     with open("users.mpk", "wb") as f:
