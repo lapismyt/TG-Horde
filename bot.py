@@ -230,7 +230,8 @@ async def cmd_image(message: types.Message):
         steps = user.generation_settings.steps,
         karras = True,
         loras = loras,
-        n = user.generation_settings.n
+        n = user.generation_settings.ni,
+        post_processing = None
     )
 
     model = user.generation_settings.model
