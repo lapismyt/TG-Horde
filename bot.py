@@ -5,6 +5,7 @@ from aiogram.filters.command import Command
 from aiogram.utils.markdown import hcode
 from aiogram.enums import ParseMode
 from stablehorde_api import StableHordeAPI, ActiveModelsRequest, GenerationInput, ModelGenerationInputStable, ModelPayloadLorasStable
+from stablehorde_api.errors import *
 import msgspec
 import models
 import datetime
@@ -241,7 +242,7 @@ async def cmd_image(message: types.Message):
         karras = True,
         loras = loras,
         n = user.generation_settings.n,
-        post_processing = ["RealESRGAN_x4plus"]
+        post_processing = ["GFPGAN", "RealESRGAN_x4plus"]
     )
 
     model = user.generation_settings.model
@@ -275,7 +276,17 @@ async def cmd_image(message: types.Message):
 
     finished = False
     while not finished:
-        status = await horde.generate_check(request.id)
+        try:
+            status = await horde.generate_check(request.id)
+        except StatusNotFound:
+            with open("users.mpk", "rb") as f:
+                users = msgspec.msgpack.decode(f.read(), type=models.Users)
+            user = users.get_user(message.from_user.id)
+            user.queued = False
+            with open("users.mpk", "wb") as f:
+                f.write(msgspec.msgpack.encode(users))
+            await message.answer("Ошибка! Не удалось сгенерироваьь изображение.")
+            return None
         if status.done == 1:
             finished = True
         else:
