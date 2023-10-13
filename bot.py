@@ -315,10 +315,26 @@ async def cmd_steps(message: types.Message):
     with open("users.mpk", "wb") as f:
         f.write(msgspec.msgpack.encode(users))
 
+@dp.message(Command("cfg"))
+async def cmd_steps(message: types.Message):
+    with open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    user = users.get_user(message.from_user.id)
+        if message.text.lower() == "/steps":
+        await message.answer("CFG Scale: " + str(user.generation_settings.steps))
+    elif message.text.lower().split()[1].isdigit():
+        if 0 <= int(message.text.lower().split()[1]) <= 100:
+            user.generation_settings.steps = int(message.text.lower().split()[1])
+        await message.answer("CFG Scale: " + str(user.generation_settings.steps))
+    else:
+            pass
+    with open("users.mpk", "wb") as f:
+        f.write(msgspec.msgpack.encode(users))
+
 @dp.message(Command("kudos"))
 async def cmd_kudos(message: types.Message):
     usr = await horde.find_user()
-    await message.answer("Kudos: " + str(usr.kudos))
+    await message.answer("Kudos: " + str(int(usr.kudos)))
 
 @dp.message(Command("models"))
 async def cmd_models(message: types.Message):
