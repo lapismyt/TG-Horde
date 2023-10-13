@@ -297,7 +297,8 @@ async def cmd_steps(message: types.Message):
     if message.text.lower() == "/steps":
         await message.answer("Шаги: " + str(user.generation_settings.steps))
     elif message.text.lower().split()[1].isdigit():
-        user.generation_settings.steps = int(message.text.lower().split()[1])
+        if 1 <= int(message.text.lower().split()[1]) <= 500:
+            user.generation_settings.steps = int(message.text.lower().split()[1])
         await message.answer("Шаги: " + str(user.generation_settings.steps))
     else:
         pass
