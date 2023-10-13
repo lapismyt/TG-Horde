@@ -223,7 +223,7 @@ async def cmd_image(message: types.Message):
     else: loras = None
 
     params = ModelGenerationInputStable(
-        sampler_name = "k_dpmpp_2m",
+        sampler_name = "k_lms",
         cfg_scale = user.generation_settings.cfg_scale,
         height = user.generation_settings.height,
         width = user.generation_settings.width,

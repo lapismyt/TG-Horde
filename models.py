@@ -8,7 +8,7 @@ class GenerationSettings(msgspec.Struct):
     width: int = 512
     height: int = 512
     cfg_scale: float = 7.0
-    steps: int = 15
+    steps: int = 20
     loras: list[LoraSettings] | None = None
     nsfw: bool = False
     model: str = "any"
