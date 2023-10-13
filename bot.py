@@ -235,16 +235,16 @@ async def cmd_image(message: types.Message):
 
     model = user.generation_settings.model
     if model == "any":
-        models = None
+        model = None
     else:
-        models = [model]
+        model = [model]
 
     payload = GenerationInput(
         prompt = message.text.replace("/image ", ""),
         params = params,
         nsfw = user.generation_settings.nsfw,
         censor_nsfw = not user.generation_settings.nsfw,
-        models = [models],
+        models = model,
         r2 = True,
         slow_workers = False
     )
