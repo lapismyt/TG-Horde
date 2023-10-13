@@ -11,7 +11,7 @@ class GenerationSettings(msgspec.Struct):
     steps: int = 20
     loras: list[LoraSettings] | None = None
     nsfw: bool = False
-    model: str = "any"
+    model: str = "ANY"
     n: int = 1
     sampler: str = "k_lms"
 
