@@ -223,7 +223,7 @@ async def cmd_image(message: types.Message):
     else: loras = None
 
     params = ModelGenerationInputStable(
-        sampler_name = "k_lms",
+        sampler_name = user.generation_settings.sampler,
         cfg_scale = user.generation_settings.cfg_scale,
         height = user.generation_settings.height,
         width = user.generation_settings.width,
@@ -231,7 +231,7 @@ async def cmd_image(message: types.Message):
         karras = True,
         loras = loras,
         n = user.generation_settings.ni,
-        post_processing = None
+        post_processing = ["RealESRGAN_x4plus"]
     )
 
     model = user.generation_settings.model
@@ -305,6 +305,9 @@ async def cmd_steps(message: types.Message):
         f.write(msgspec.msgpack.encode(users))
 
 @dp.message(Command("kudos"))
+async def cmd_kudos(message: types.Message):
+    usr = horde.find_user()
+    await message.answer("Kudos: " + str(usr.kudos))
 
 @dp.message(Command("models"))
 async def cmd_models(message: types.Message):

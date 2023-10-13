@@ -13,6 +13,7 @@ class GenerationSettings(msgspec.Struct):
     nsfw: bool = False
     model: str = "any"
     n: int = 1
+    sampler: str = "k_lms"
 
 class User(msgspec.Struct):
     id: int
