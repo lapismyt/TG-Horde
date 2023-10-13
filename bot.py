@@ -177,7 +177,12 @@ async def cmd_model(message: types.Message):
         with open("users.mpk", "rb") as f:
             users = msgspec.msgpack.decode(f.read(), type=models.Users)
         user = users.get_user(message.from_user.id)
-        await message.answer("Активная модель: " + user.generation_settings.model)
+        if user.generation_settings.model == "any":
+            model = "ANY"
+        else:
+            model = user.generation_settings.model
+        await message.answer("Активная модель: " + model)
+        return None
     for m in active_models:
         if m.name.lower() == request.lower():
             model = m.name
