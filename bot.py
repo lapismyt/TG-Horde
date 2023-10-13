@@ -307,7 +307,7 @@ async def cmd_steps(message: types.Message):
 
 @dp.message(Command("kudos"))
 async def cmd_kudos(message: types.Message):
-    usr = horde.find_user()
+    usr = await horde.find_user()
     await message.answer("Kudos: " + str(usr.kudos))
 
 @dp.message(Command("models"))
