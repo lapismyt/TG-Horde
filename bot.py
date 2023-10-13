@@ -242,7 +242,7 @@ async def cmd_image(message: types.Message):
         karras = True,
         loras = loras,
         n = user.generation_settings.n,
-        post_processing = ["GFPGAN"]
+        post_processing = ["RealESRGAN_x4plus"]
     )
 
     model = user.generation_settings.model
