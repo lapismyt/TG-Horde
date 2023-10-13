@@ -164,7 +164,7 @@ async def cmd_model(message: types.Message):
     active_models = await horde.get_models(ActiveModelsRequest())
     model = None
     possible = []
-    if message.text.lower() == "any":
+    if message.text.lower() == "/model any":
         with open("users.mpk", "rb") as f:
             users = msgspec.msgpack.decode(f.read(), type=models.Users)
         user = users.get_user(message.from_user.id)
