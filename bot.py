@@ -169,7 +169,7 @@ async def cmd_model(message: types.Message):
             users = msgspec.msgpack.decode(f.read(), type=models.Users)
         user = users.get_user(message.from_user.id)
         user.generation_settings.model = "any"
-        with open("users.mpk", "wb") ad f:
+        with open("users.mpk", "wb") as f:
             f.write(msgspec.msgpack.encode(users))
         await message.answer("Выбрана модель: ANY")
         return None
