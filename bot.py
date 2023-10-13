@@ -164,6 +164,15 @@ async def cmd_model(message: types.Message):
     active_models = await horde.get_models(ActiveModelsRequest())
     model = None
     possible = []
+    if message.text.lower() == "any":
+        with open("users.mpk", "rb") as f:
+            users = msgspec.msgpack.decode(f.read(), type=models.Users)
+        user = users.get_user(message.from_user.id)
+        user.generation_settings.model = "any"
+        with open("users.mpk", "wb") ad f:
+            f.write(msgspec.msgpack.encode(users))
+        await message.answer("Выбрана модель: ANY")
+        return None
     for m in active_models:
         if m.name.lower() == request.lower():
             model = m.name
@@ -224,12 +233,18 @@ async def cmd_image(message: types.Message):
         n = user.generation_settings.n
     )
 
+    model = user.generation_settings.model
+    if model == "any":
+        models = None
+    else:
+        models = [model]
+
     payload = GenerationInput(
         prompt = message.text.replace("/image ", ""),
         params = params,
         nsfw = user.generation_settings.nsfw,
         censor_nsfw = not user.generation_settings.nsfw,
-        models = [user.generation_settings.model],
+        models = [models],
         r2 = True,
         slow_workers = False
     )
