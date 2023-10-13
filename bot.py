@@ -324,7 +324,7 @@ async def cmd_steps(message: types.Message):
         await message.answer("CFG Scale: " + str(user.generation_settings.steps))
     elif message.text.lower().split()[1].isdigit():
         if 0 <= int(message.text.lower().split()[1]) <= 100:
-            user.generation_settings.steps = int(message.text.lower().split()[1])
+            user.generation_settings.steps = float(message.text.lower().split()[1])
         await message.answer("CFG Scale: " + str(user.generation_settings.steps))
     else:
             pass
