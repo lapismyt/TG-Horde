@@ -149,6 +149,7 @@ async def cmd_n(message: types.Message):
     user = users.get_user(message.from_user.id)
     if len(message.text.split()) != 2:
         await message.answer("Количество генерируемых изображений за раз: " + str(user.generation_settings.n) + ".")
+        return None
     if user.premium:
         n = int(message.text.split()[1])
         if 1 <= n <= 10:
