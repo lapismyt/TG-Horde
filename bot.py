@@ -242,7 +242,7 @@ async def cmd_image(message: types.Message):
         karras = True,
         loras = loras,
         n = user.generation_settings.n,
-        post_processing = ["GFPGAN", "RealESRGAN_x4plus"]
+        post_processing = ["GFPGAN"]
     )
 
     model = user.generation_settings.model
@@ -285,7 +285,7 @@ async def cmd_image(message: types.Message):
             user.queued = False
             with open("users.mpk", "wb") as f:
                 f.write(msgspec.msgpack.encode(users))
-            await message.answer("Ошибка! Не удалось сгенерироваьь изображение.")
+            await message.answer("Ошибка! Не удалось сгенерировать изображение.")
             return None
         if status.done == 1:
             finished = True
