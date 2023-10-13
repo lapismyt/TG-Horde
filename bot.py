@@ -230,7 +230,7 @@ async def cmd_image(message: types.Message):
         steps = user.generation_settings.steps,
         karras = True,
         loras = loras,
-        n = user.generation_settings.ni,
+        n = user.generation_settings.n,
         post_processing = ["RealESRGAN_x4plus"]
     )
 
