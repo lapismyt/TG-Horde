@@ -177,7 +177,7 @@ async def cmd_model(message: types.Message):
         with open("users.mpk", "rb") as f:
             users = msgspec.msgpack.decode(f.read(), type=models.Users)
         user = users.get_user(message.from_user.id)
-        if user.generation_settings.model == "any":
+        if user.generation_settings.model.lower() == "any":
             model = "ANY"
         else:
             model = user.generation_settings.model
@@ -193,10 +193,10 @@ async def cmd_model(message: types.Message):
         with open("users.mpk", "rb") as f:
             users = msgspec.msgpack.decode(f.read(), type=models.Users)
         user = users.get_user(message.from_user.id)
+        user.generation_settings.model = model
         await message.answer("Выбрана модель: " + model)
         with open("users.mpk", "wb") as f:
-            users = msgspec.msgpack.encode(users)
-            f.write(users)
+            f.write(msgspec.msgpack.encode(users))
     else:
         additional = f""
         if len(possible) >= 1:
@@ -292,7 +292,7 @@ async def cmd_image(message: types.Message):
     generations = img_status.generations
     await msg.delete()
     for num, generation in enumerate(generations):
-        path = "{str(int(time.time()))}_{str(num)}.webp"
+        path = f"images/{str(int(time.time()))}_{str(num)}.webp"
         await message.answer_photo(generation.img)
         async with aiohttp.ClientSession() as session:
             async with session.get(generation.img) as resp:
