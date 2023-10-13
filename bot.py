@@ -201,6 +201,7 @@ async def cmd_image(message: types.Message):
         return None
     if message.text == "/image":
         await message.answer("Нет запроса.")
+        return None
     user.queued = True
     with open("users.mpk", "wb") as f:
         f.write(msgspec.msgpack.encode(users))
