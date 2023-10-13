@@ -223,7 +223,7 @@ async def cmd_image(message: types.Message):
     else: loras = None
 
     params = ModelGenerationInputStable(
-        sampler_name = "k_euler_a",
+        sampler_name = "k_dpmpp_2m",
         cfg_scale = user.generation_settings.cfg_scale,
         height = user.generation_settings.height,
         width = user.generation_settings.width,
@@ -288,6 +288,23 @@ async def cmd_image(message: types.Message):
             async with session.get(generation.img) as resp:
                 async with aiofiles.open(path, "wb") as f:
                     f.write(await resp.content.read())
+
+@dp.message(Command("steps"))
+async def cmd_steps(message: types.Message):
+    with open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    user = users.get_user(message.from_user.id)
+    if message.text.lower() == "/steps":
+        await message.answer("Шаги: " + str(user.generation_settings.steps))
+    elif message.text.lower().split()[1].isdigit():
+        user.generation_settings.steps = int(message.text.lower().split()[1])
+        await message.answer("Шаги: " + str(user.generation_settings.steps))
+    else:
+        pass
+    with open("users.mpk", "wb") as f:
+        f.write(msgspec.msgpack.encode(users))
+
+@dp.message(Command("kudos"))
 
 @dp.message(Command("models"))
 async def cmd_models(message: types.Message):
