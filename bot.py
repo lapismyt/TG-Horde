@@ -441,7 +441,7 @@ async def cmd_models(message: types.Message):
 
 async def main():
     global horde
-    horde = StableHordeAPI(horde_api_key)
+    horde = StableHordeAPI(horde_api_key, api="https://aihorde.net/api/v2")
     logging.basicConfig(level=logging.INFO)
     with open("users.mpk", "rb") as f:
         users = msgspec.msgpack.decode(f.read(), type=models.Users)
