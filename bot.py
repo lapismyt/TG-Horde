@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters.command import Command
 from aiogram.utils.markdown import hcode
 from aiogram.enums import ParseMode
-from stablehorde_api import StableHordeAPI, ActiveModelsRequest, GenerationInput, ModelGenerationInputStable, ModelPayloadLorasStable
+from stablehorde_api import StableHordeAPI, ActiveModelsRequest, GenerationInput, ModelGenerationInputStable, ModelPayloadLorasStable, ModelPayloadTextualInversionsStable
 from stablehorde_api.errors import *
 import msgspec
 import models
@@ -14,6 +14,7 @@ import aiofiles
 import aiohttp
 import time
 import re
+import json
 
 with open("admin.txt") as f: admin = f.read().strip()
 with open("horde_token.txt") as f: horde_api_key = f.read().strip()
@@ -29,6 +30,52 @@ def parse_loras(text):
         if item.split(":")[0] not in loras:
             return None
     return {item.split(":")[0]: float(item.split(":")[1]) for item in text.split()}
+
+def load_tis(prompt):
+    tis = []
+    if " ### " in prompt:
+        prompt = prompt.split(" ### ")[0]
+        negprompt = prompt.split(" ### ")[1]
+    else: negprompt = None
+    available = json.load(open("tis.json"))
+    for ti in available.keys():
+        if ti.lower() in prompt.lower():
+            tis.append(
+                ModelPayloadTextualInversionsStable(
+                    name = available[ti],
+                    inject_ti = "prompt"
+                )
+            )
+        elif negprompt is not None:
+            if ti.lower() in negprompt.lower():
+                tis.append(
+                    ModelPayloadTextualInversionsStable(
+                        name = available[ti],
+                        inject_ti = "prompt"
+                    )
+                )
+        else: pass
+        if tis == []: tis = None
+        return tis
+
+@dp.message(Command("sendall"))
+async def cmd_sendall(message: types.Message):
+    if message.from_user.id == int(admin):
+        with open("users.mpk", "rb") as f:
+            users = msgspec.msgpack.decode(f.read(), type=models.Users)
+        for usr in users.all:
+            try:
+                await message.forward(usr.id)
+            except:
+                pass
+
+@dp.message(Command("add_ti"))
+async def cmd_add_ti(message: types.Message):
+    if message.from_user.id == int(admin):
+        tis = json.load(open("tis.json"))
+        tis[message.text.split()[1]] = message.text.split()[2]
+        json.dump(open("tis.json", "w"))
+        await message.answer("Magic TI добавлена!")
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
@@ -148,13 +195,13 @@ async def cmd_res(message: types.Message):
         users = msgspec.msgpack.decode(f.read(), type=models.Users)
     user = users.get_user(message.from_user.id)
     try:
-        width, height = map(int, resolution.split('x'))
+        width, height = map(int, message.text.lower().split()[1].split('x'))
         if 64 <= (width * height) <= (768*768):
             user.generation_settings.width = width
             user.generation_settings.height = height
             with open("users.mpk", "wb") as f:
                 f.write(msgspec.msgpack.encode(users))
-    except ValueError:
+    except:
         pass
     await message.answer(f"Текущее разрешение: {str(user.generation_settings.width)}x{str(user.generation_settings.height)}")
 
@@ -250,6 +297,8 @@ async def cmd_image(message: types.Message):
             loras.append(ModelPayloadLorasStable(lora.name, model=lora.strength))
     else: loras = None
 
+    tis = load_tis(message.text.replace("/image ", ""))
+
     params = ModelGenerationInputStable(
         sampler_name = user.generation_settings.sampler,
         cfg_scale = user.generation_settings.cfg_scale,
@@ -259,7 +308,8 @@ async def cmd_image(message: types.Message):
         karras = True,
         loras = loras,
         n = user.generation_settings.n,
-        hires_fix = True
+        hires_fix = True,
+        tis = tis
     )
 
     model = user.generation_settings.model
@@ -306,7 +356,7 @@ async def cmd_image(message: types.Message):
         if status.done == 1:
             finished = True
         else:
-            await asyncio.sleep(status.wait_time)
+            await asyncio.sleep(5)
 
     with open("users.mpk", "rb") as f:
         users = msgspec.msgpack.decode(f.read(), type=models.Users)
