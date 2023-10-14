@@ -71,9 +71,11 @@ async def cmd_sendall(message: types.Message):
 @dp.message(Command("add_ti"))
 async def cmd_add_ti(message: types.Message):
     if message.from_user.id == int(admin):
-        tis = json.load(open("tis.json"))
+        with open("tis.json") as f:
+            tis = json.load(f)
         tis[message.text.split()[1]] = message.text.split()[2]
-        json.dump(tis, open("tis.json", "w"))
+        with open("tis.json", "w") as f:
+            json.dump(tis, f)
         await message.answer("Magic TI добавлена!")
 
 @dp.message(Command("start"))
