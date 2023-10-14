@@ -50,7 +50,7 @@ def load_tis(prompt):
                 tis.append(
                     ModelPayloadTextualInversionsStable(
                         name = available[ti],
-                        inject_ti = "prompt"
+                        inject_ti = "negprompt"
                     )
                 )
         else: pass
