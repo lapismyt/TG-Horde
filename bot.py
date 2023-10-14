@@ -343,6 +343,16 @@ async def cmd_image(message: types.Message):
     while not finished:
         try:
             status = await horde.generate_check(request.id)
+            eta = status.wait_time
+            position = status.queue_position
+            response = f""
+            response += f"Вы на {str(position)} месте в очереди.\n"
+            response += f"Ожидайте ~{str(datetime.timedelta(seconds=eta))}.\n\n"
+            response += f"ID запроса: {hcode(request.id)}."
+            try:
+                await msg.edit_text(response)
+            except:
+                pass
         except StatusNotFound:
             with open("users.mpk", "rb") as f:
                 users = msgspec.msgpack.decode(f.read(), type=models.Users)
