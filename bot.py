@@ -142,6 +142,22 @@ async def cmd_premium(message: types.Message):
         with open("users.mpk", "wb") as f:
             f.write(msgspec.msgpack.encode(users))
 
+@dp.message(Command("res"))
+async def cmd_res(message: types.Message):
+    with open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    user = users.get_user(message.from_user.id)
+    try:
+        width, height = map(int, resolution.split('x'))
+        if 64 <= (width * height) <= (768*768):
+            user.generation_settings.width = width
+            user.generation_settings.height = height
+            with open("users.mpk", "wb") as f:
+                f.write(msgspec.msgpack.encode(users))
+    except ValueError:
+        pass
+    await message.answer(f"Текущее разрешение: {str(user.generation_settings.width)}x{str(user.generation_settings.height)}")
+
 @dp.message(Command("n"))
 async def cmd_n(message: types.Message):
     with open("users.mpk", "rb") as f:
