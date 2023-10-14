@@ -54,8 +54,8 @@ def load_tis(prompt):
                     )
                 )
         else: pass
-        if tis == []: tis = None
-        return tis
+    if tis == []: tis = None
+    return tis
 
 @dp.message(Command("sendall"))
 async def cmd_sendall(message: types.Message):
@@ -64,7 +64,7 @@ async def cmd_sendall(message: types.Message):
             users = msgspec.msgpack.decode(f.read(), type=models.Users)
         for usr in users.all:
             try:
-                await message.forward(usr.id)
+                await message.reply_to_message.forward(usr.id)
             except:
                 pass
 
