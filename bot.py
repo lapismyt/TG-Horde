@@ -144,7 +144,7 @@ async def cmd_add_lora(message: types.Message):
     if "civitai.com/models/" in message.text:
         await message.forward(admin)
         await message.answer("Спасибо! В ближайшее время мы добавим LoRA.")
-    elif str(message.from_user.id) == admin:
+    elif str(message.from_user.id) == admin and message.text.split()[1].isdigit():
         async with aiofiles.open("loras.txt", "a") as f:
             model_id = message.text.split()[1]
             await f.write(model_id + "\n")
