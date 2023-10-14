@@ -253,12 +253,13 @@ async def cmd_image(message: types.Message):
     params = ModelGenerationInputStable(
         sampler_name = user.generation_settings.sampler,
         cfg_scale = user.generation_settings.cfg_scale,
-        height = user.generation_settings.height,
-        width = user.generation_settings.width,
+        height = user.generation_settings.height * 2,
+        width = user.generation_settings.width * 2,
         steps = user.generation_settings.steps,
         karras = True,
         loras = loras,
-        n = user.generation_settings.n
+        n = user.generation_settings.n,
+        hires_fix = True
     )
 
     model = user.generation_settings.model
