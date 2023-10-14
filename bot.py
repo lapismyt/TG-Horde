@@ -34,8 +34,7 @@ def parse_loras(text):
 def load_tis(prompt):
     tis = []
     if " ### " in prompt:
-        prompt = prompt.split(" ### ")[0]
-        negprompt = prompt.split(" ### ")[1]
+        prompt, negprompt = prompt.split(" ### ")
     else: negprompt = None
     available = json.load(open("tis.json"))
     for ti in available.keys():
