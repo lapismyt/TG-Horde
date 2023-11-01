@@ -280,7 +280,9 @@ async def cmd_sampler(message: types.Message):
         with open("users.mpk", "rb") as f:
             users = msgspec.msgpack.decode(f.read(), type=models.Users)
         user = users.get_user(message.from_user.id)
-        user.generation_settings.sampler = message.text.replace("/sampler", "")
+        user.generation_settings.sampler = message.text.lower().strip().replace("/sampler ", "")
+        if user.generation_settings.sampler == "ddim":
+            user.generation_settings.sampler = "DDIM"
         with open("users.mpk", "wb") as f:
             f.write(msgspec.msgpack.encode(users))
         await message.answer("Сэмплер изменён.")
