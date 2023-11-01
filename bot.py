@@ -276,7 +276,7 @@ async def cmd_model(message: types.Message):
 @dp.message(Command("sampler"))
 async def cmd_sampler(message: types.Message):
     global samplers
-    if message.text.lower().strip().replace("/sampler", "") in samplers:
+    if message.text.lower().strip().replace("/sampler ", "") in samplers:
         with open("users.mpk", "rb") as f:
             users = msgspec.msgpack.decode(f.read(), type=models.Users)
         user = users.get_user(message.from_user.id)
@@ -285,7 +285,7 @@ async def cmd_sampler(message: types.Message):
             f.write(msgspec.msgpack.encode(users))
         await message.answer("Сэмплер изменён.")
     else:
-        await message.answer("Сэмплер не найден.\nДоступные сэмплеры:\n "+"\n".join(samplers))
+        await message.answer("Сэмплер не найден.\nДоступные сэмплеры:\n"+"\n".join(samplers))
 
 @dp.message(Command("loras"))
 async def cmd_loras(message: types.Message):
