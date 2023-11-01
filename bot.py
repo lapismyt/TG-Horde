@@ -285,7 +285,7 @@ async def cmd_sampler(message: types.Message):
             f.write(msgspec.msgpack.encode(users))
         await message.answer("Сэмплер изменён.")
     else:
-        await message.answer(f"Сэмплер не найден.\nДоступные сэмплеры: {'\n'.join(samplers)}")
+        await message.answer("Сэмплер не найден.\nДоступные сэмплеры:\n "+"\n".join(samplers)})
 
 @dp.message(Command("loras"))
 async def cmd_loras(message: types.Message):
