@@ -141,7 +141,7 @@ async def cmd_lora(message: types.Message):
 
 @dp.message(Command("help"))
 async def cmd_help(message: types.Message):
-    await message.answer("Тут пока что ничего нет, пишите @LapisMYT")
+    await message.answer("https://telegra.ph/Kak-polzovatsya-HordeAI-Bot-10-21")
 
 @dp.message(Command("add_lora"))
 async def cmd_add_lora(message: types.Message):
@@ -199,7 +199,7 @@ async def cmd_res(message: types.Message):
     user = users.get_user(message.from_user.id)
     try:
         width, height = map(int, message.text.lower().split()[1].split('x'))
-        if 64 <= (width * height) <= (768*768):
+        if 64 <= (width * height) <= (1024*2048):
             user.generation_settings.width = width
             user.generation_settings.height = height
             with open("users.mpk", "wb") as f:
@@ -319,14 +319,14 @@ async def cmd_image(message: types.Message):
     params = ModelGenerationInputStable(
         sampler_name = user.generation_settings.sampler,
         cfg_scale = user.generation_settings.cfg_scale,
-        height = user.generation_settings.height * 2,
-        width = user.generation_settings.width * 2,
+        height = user.generation_settings.height,
+        width = user.generation_settings.width,
         steps = user.generation_settings.steps,
         karras = True,
         loras = loras,
         n = user.generation_settings.n,
-        hires_fix = True,
-        tis = tis
+        tis = tis,
+        post_processing = None
     )
 
     model = user.generation_settings.model
