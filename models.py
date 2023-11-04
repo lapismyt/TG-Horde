@@ -13,9 +13,10 @@ class GenerationSettings(msgspec.Struct):
     nsfw: bool = False
     model: str = "ANY"
     n: int = 1
-    sampler: str = "k_lms"
+    sampler: str = "k_euler_a"
     pose: str | None = None
     hires_fix: bool = True
+    strength: float = 0.7
 
 class User(msgspec.Struct):
     id: int
