@@ -237,7 +237,7 @@ async def cmd_pose(message: types.Message):
     pose = message.text.split()[1].strip().lower()
     if pose == "clear":
         pose = None
-    if not pose + ".jpg" in poses:
+    elif not pose + ".jpg" in poses:
         await message.answer("Позы не существует!")
         return None
     with open("users.mpk", "rb") as f:
