@@ -372,7 +372,8 @@ async def cmd_image(message: types.Message):
         hires_fix = True,
         tis = tis,
         image_is_control = image_is_control,
-        control_type = control_type
+        control_type = control_type,
+        denoising_strength = denoising_strength
     )
 
     model = user.generation_settings.model
