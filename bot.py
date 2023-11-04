@@ -64,6 +64,16 @@ def load_tis(prompt):
     if tis == []: tis = None
     return tis
 
+@dp.message(Command("strength"))
+async def cmd_strength(message: types.Message):
+    with open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    with open("users.mpk", "wb") as f:
+        strength = float(message.text.split()[1])
+        user = users.get_user(message.from_user.id)
+        user.generation_settings.strength = strength
+        f.write(msgspec.msgpack.encode(users))
+
 @dp.message(Command("sendall"))
 async def cmd_sendall(message: types.Message):
     if message.from_user.id == int(admin):
@@ -248,11 +258,125 @@ async def cmd_n(message: types.Message):
 @dp.message(F.photo)
 async def handle_photo(message: types.Message):
     if not hasattr(message, "caption"):
-        await message.answer("Пустой запрос.")
+        await message.answer("Нет запроса.")
         return None
     photo = message.photo[-1]
-    name = random.randint(10000, 100000)
+    name = random.randint(10000, 100000) 
     await bot.download(photo, destination=f"img2img/{name}.jpg")
+    with open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    user = users.get_user(message.from_user.id)
+    if user.queued:
+        await message.answer("Сначала дождись окончания генерации.")
+        return None
+    user.queued = True
+    with open("users.mpk", "wb") as f:
+        f.write(msgspec.msgpack.encode(users))
+    msg = await message.answer("Подождите...")
+    
+    if user.generation_settings.loras is not None:
+        loras = []
+        for lora in user.generation_settings.loras:
+            loras.append(ModelPayloadLorasStable(lora.name, model=lora.strength))
+    else: loras = None
+
+    tis = load_tis(message.caption)
+
+    params = ModelGenerationInputStable(
+        sampler_name = user.generation_settings.sampler,
+        cfg_scale = user.generation_settings.cfg_scale,
+        height = user.generation_settings.height,
+        width = user.generation_settings.width,
+        steps = user.generation_settings.steps,
+        loras = loras,
+        n = user.generation_settings.n,
+        post_processing = ["CodeFormers", "GFPGAN", "RealESRGAN_x4plus"],
+        hires_fix = user.generation_settings.hires_fix,
+        tis = tis,
+        denoising_strength = user.generation_settings.strength
+    )
+
+    model = user.generation_settings.model
+    if model.lower() == "any":
+        model = None
+    else:
+        model = [model]
+
+    payload = GenerationInput(
+        prompt = message.caption,
+        params = params,
+        nsfw = user.generation_settings.nsfw,
+        censor_nsfw = not user.generation_settings.nsfw,
+        models = model,
+        r2 = True,
+        slow_workers = False,
+        source_image = horde.convert_image(f"img2img/{name}.jpg")
+    )
+    try:
+        request = await horde.txt2img_request(payload)
+    except:
+        with open("users.mpk", "rb") as f:
+            users = msgspec.msgpack.decode(f.read(), type=models.Users)
+        user = users.get_user(message.from_user.id)
+        user.queued = False
+        with open("users.mpk", "wb"):
+            f.write(msgspec.msgpack.encode(users))
+    await asyncio.sleep(5)
+    status = await horde.generate_check(request.id)
+    eta = status.wait_time
+    position = status.queue_position
+
+    response = f""
+    response += f"Вы на {str(position)} месте в очереди.\n"
+    response += f"Ожидайте ~{str(datetime.timedelta(seconds=eta))}.\n\n"
+    response += f"ID запроса: {hcode(request.id)}."
+    await msg.edit_text(response)
+
+    finished = False
+    while not finished:
+        try:
+            status = await horde.generate_check(request.id)
+            eta = status.wait_time
+            position = status.queue_position
+            response = f""
+            response += f"Вы на {str(position)} месте в очереди.\n"
+            response += f"Ожидайте ~{str(datetime.timedelta(seconds=eta))}.\n\n"
+            response += f"ID запроса: {hcode(request.id)}."
+            try:
+                await msg.edit_text(response)
+            except:
+                pass
+        except StatusNotFound:
+            with open("users.mpk", "rb") as f:
+                users = msgspec.msgpack.decode(f.read(), type=models.Users)
+            user = users.get_user(message.from_user.id)
+            user.queued = False
+            with open("users.mpk", "wb") as f:
+                f.write(msgspec.msgpack.encode(users))
+            await message.answer("Ошибка! Не удалось сгенерировать изображение.")
+            return None
+        if status.done == 1:
+            finished = True
+        else:
+            await asyncio.sleep(5)
+
+    with open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    user = users.get_user(message.from_user.id)
+    user.queued = False
+    with open("users.mpk", "wb") as f:
+        f.write(msgspec.msgpack.encode(users))
+
+    img_status = await horde.generate_status(request.id)
+    generations = img_status.generations
+    await msg.delete()
+    for num, generation in enumerate(generations):
+        path = f"images/{str(int(time.time()))}_{str(num)}.webp"
+        await message.answer_photo(generation.img)
+        async with aiohttp.ClientSession() as session:
+            async with session.get(generation.img) as resp:
+                async with aiofiles.open(path, "wb") as f:
+                    f.write(await resp.content.read())
 
 @dp.message(Command("model"))
 async def cmd_model(message: types.Message):
