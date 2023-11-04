@@ -356,7 +356,7 @@ async def cmd_image(message: types.Message):
     if user.generation_settings.pose is not None:
         source_image = await horde.convert_image("poses/" + user.generation_settings.pose + ".jpg")
         image_is_control = True
-        control_type = "depth"
+        control_type = "canny"
         denoising_streangth = 0.5
 
     params = ModelGenerationInputStable(
