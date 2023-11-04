@@ -17,6 +17,7 @@ import time
 import re
 import json
 import random
+import os, sys
 
 with open("admin.txt") as f: admin = f.read().strip()
 with open("horde_token.txt") as f: horde_api_key = f.read().strip()
