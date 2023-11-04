@@ -2,9 +2,9 @@ import asyncio
 import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters.command import Command
+from aiogram import F
 from aiogram.utils.markdown import hcode
 from aiogram.enums import ParseMode
-from aiogram import filters
 from stablehorde_api import StableHordeAPI, ActiveModelsRequest, GenerationInput, ModelGenerationInputStable, ModelPayloadLorasStable, ModelPayloadTextualInversionsStable
 from stablehorde_api.errors import *
 import msgspec
@@ -246,7 +246,7 @@ async def cmd_pose(message: types.Message):
         f.write(msgspec.msgpack.encode(users))
     await messsge.answer("Поза изменена.")
 
-@dp.message(filters.photo)
+@dp.message(F.photo)
 async def handle_photo(message: types.Message):
     if not str(message.from_user.id) == admin:
         return None
