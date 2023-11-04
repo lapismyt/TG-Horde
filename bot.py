@@ -246,7 +246,7 @@ async def cmd_pose(message: types.Message):
         f.write(msgspec.msgpack.encode(users))
     await messsge.answer("Поза изменена.")
 
-@dp.message(ContentType.PHOTO)
+@dp.message_handler(content_types=["photo"])
 async def handle_photo(message: types.Message):
     if not str(message.from_user.id) == admin:
         return None
