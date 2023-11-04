@@ -245,7 +245,7 @@ async def cmd_pose(message: types.Message):
         user = users.get_user(message.from_user.id)
         user.generation_settings.pose = pose
         f.write(msgspec.msgpack.encode(users))
-    await messsge.answer("Поза изменена.")
+    await message.answer("Поза изменена.")
 
 @dp.message(F.photo)
 async def handle_photo(message: types.Message):
