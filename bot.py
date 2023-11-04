@@ -4,6 +4,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters.command import Command
 from aiogram.utils.markdown import hcode
 from aiogram.enums import ParseMode
+from aiogram.types import ContentType
 from stablehorde_api import StableHordeAPI, ActiveModelsRequest, GenerationInput, ModelGenerationInputStable, ModelPayloadLorasStable, ModelPayloadTextualInversionsStable
 from stablehorde_api.errors import *
 import msgspec
@@ -15,6 +16,7 @@ import aiohttp
 import time
 import re
 import json
+import random
 
 with open("admin.txt") as f: admin = f.read().strip()
 with open("horde_token.txt") as f: horde_api_key = f.read().strip()
@@ -31,7 +33,9 @@ def parse_loras(text):
     for item in text.split():
         if item.split(":")[0] not in loras:
             return None
-    return {item.split(":")[0]: float(item.split(":")[1]) for item in text.split()}
+    out = {item.split(":")[0]: float(item.split(":")[1]) for item in text.split()}
+    if out == []: out = None
+    return out
 
 def load_tis(prompt):
     tis = []
@@ -226,6 +230,31 @@ async def cmd_n(message: types.Message):
     with open("users.mpk", "wb") as f:
         f.write(msgspec.msgpack.encode(users))
 
+@dp.message(Command("pose"))
+async def cmd_pose(message: types.Message):
+    poses = os.listdir("poses")
+    pose = message.text.split()[1].strip().lower()
+    if pose == "clear":
+        pose = None
+    if not pose + ".jpg" in poses:
+        await message.answer("Позы не существует!")
+        return None
+    with open("users.mpk", "rb+") as f:
+        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+        user = users.get_user(message.from_user.id)
+        user.generation_settings.pose = pose
+        f.write(msgspec.msgpack.encode(users))
+    await messsge.answer("Поза изменена.")
+
+@dp.message(content_types=ContentType.PHOTO)
+async def handle_photo(message: types.Message):
+    if not str(message.from_user.id) == admin:
+        return None
+    photo = message.photo[-1]
+    name = message.text.strip()
+    await photo.download(f"poses/{name}.jpg")
+    await message.answer("Поза успешно добавлена!")
+
 @dp.message(Command("model"))
 async def cmd_model(message: types.Message):
     request = message.text.replace("/model ", "")
@@ -318,6 +347,14 @@ async def cmd_image(message: types.Message):
 
     tis = load_tis(message.text.replace("/image ", ""))
 
+    source_image = None
+    image_is_control = None
+    control_type = None
+    if user.generation_settings.pose is not None:
+        source_image = horde.convert_image(user.generation_settings.pose)
+        image_is_control = True
+        control_type = "depth"
+
     params = ModelGenerationInputStable(
         sampler_name = user.generation_settings.sampler,
         cfg_scale = user.generation_settings.cfg_scale,
@@ -329,6 +366,10 @@ async def cmd_image(message: types.Message):
         n = user.generation_settings.n,
         tis = tis,
         post_processing = None
+        hires_fix = True,
+        tis = tis,
+        image_is_control = image_is_control,
+        control_type = control_type
     )
 
     model = user.generation_settings.model
@@ -344,7 +385,8 @@ async def cmd_image(message: types.Message):
         censor_nsfw = not user.generation_settings.nsfw,
         models = model,
         r2 = True,
-        slow_workers = False
+        slow_workers = False,
+        source_image = source_image
     )
 
     request = await horde.txt2img_request(payload)

@@ -14,6 +14,7 @@ class GenerationSettings(msgspec.Struct):
     model: str = "ANY"
     n: int = 1
     sampler: str = "k_lms"
+    pose: str | None = None
 
 class User(msgspec.Struct):
     id: int
