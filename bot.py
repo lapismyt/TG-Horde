@@ -364,8 +364,7 @@ async def cmd_image(message: types.Message):
         karras = True,
         loras = loras,
         n = user.generation_settings.n,
-        tis = tis,
-        post_processing = None
+        post_processing = None,
         hires_fix = True,
         tis = tis,
         image_is_control = image_is_control,
