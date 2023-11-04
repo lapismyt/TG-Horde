@@ -240,10 +240,11 @@ async def cmd_pose(message: types.Message):
     if not pose + ".jpg" in poses:
         await message.answer("Позы не существует!")
         return None
-    with open("users.mpk", "rb+") as f:
+    with open("users.mpk", "rb") as f:
         users = msgspec.msgpack.decode(f.read(), type=models.Users)
         user = users.get_user(message.from_user.id)
         user.generation_settings.pose = pose
+    with open("users.mpk", "wb") as f:
         f.write(msgspec.msgpack.encode(users))
     await message.answer("Поза изменена.")
 
