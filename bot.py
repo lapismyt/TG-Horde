@@ -252,7 +252,7 @@ async def handle_photo(message: types.Message):
         return None
     photo = message.photo[-1]
     name = message.caption.strip()
-    await photo.download(f"poses/{name}.jpg")
+    await bot.download(photo, destination=f"poses/{name}.jpg")
     await message.answer("Поза успешно добавлена!")
 
 @dp.message(Command("model"))
