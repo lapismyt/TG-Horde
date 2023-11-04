@@ -25,6 +25,8 @@ with open("tg_token.txt") as f: token = f.read().strip()
 dp = Dispatcher()
 bot = Bot(token=token, parse_mode=ParseMode.HTML)
 
+samplers = ["k_lms", "k_heun", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a", "k_dpm_fast", "k_dpm_adaptive", "k_dpmpp_2s_a", "k_dpmpp_2m", "dpmsolver", "k_dpmpp_sde", "ddim"]
+
 def parse_loras(text):
     with open("loras.txt", "r") as f:
         loras = f.read().strip().splitlines()
@@ -299,6 +301,22 @@ async def cmd_model(message: types.Message):
             for pm in possible:
                 additional += f"{pm}\n"
         await message.answer(f"Модель не найдена: {request}\n\n{additional}")
+
+@dp.message(Command("sampler"))
+async def cmd_sampler(message: types.Message):
+    global samplers
+    if message.text.lower().strip().replace("/sampler ", "") in samplers:
+        with open("users.mpk", "rb") as f:
+            users = msgspec.msgpack.decode(f.read(), type=models.Users)
+        user = users.get_user(message.from_user.id)
+        user.generation_settings.sampler = message.text.lower().strip().replace("/sampler ", "")
+        if user.generation_settings.sampler == "ddim":
+            user.generation_settings.sampler = "DDIM"
+        with open("users.mpk", "wb") as f:
+            f.write(msgspec.msgpack.encode(users))
+        await message.answer("Сэмплер изменён.")
+    else:
+        await message.answer("Сэмплер не найден.\nДоступные сэмплеры:\n"+"\n".join(samplers))
 
 @dp.message(Command("loras"))
 async def cmd_loras(message: types.Message):
