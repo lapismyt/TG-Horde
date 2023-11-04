@@ -251,7 +251,7 @@ async def handle_photo(message: types.Message):
     if not str(message.from_user.id) == admin:
         return None
     photo = message.photo[-1]
-    name = message.text.strip()
+    name = message.caption.strip()
     await photo.download(f"poses/{name}.jpg")
     await message.answer("Поза успешно добавлена!")
 
