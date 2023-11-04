@@ -1,3 +1,8 @@
+dbs/*.mpk
+users.mpk
+images/*.webp
+img2img/*.jpg
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

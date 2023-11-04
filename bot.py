@@ -175,6 +175,20 @@ async def cmd_nsfw(message: types.Message):
     with open("users.mpk", "wb") as f:
         f.write(msgspec.msgpack.encode(users))
 
+@dp.message(Command("hires_fix"))
+async def cmd_nsfw(message: types.Message):
+    with open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    user = users.get_user(message.from_user.id)
+    if user.generation_settings.hires_fix:
+        user.generation_settings.hires_fix = False
+        await message.answer("HiRes Fix выключен.")
+    else:
+        user.generation_settings.hires_fix = True
+        await message.answer("HiRes Fix включён.")
+    with open("users.mpk", "wb") as f:
+        f.write(msgspec.msgpack.encode(users))
+
 @dp.message(Command("getid"))
 async def cmd_getid(message: types.Message):
     await message.answer(str(message.from_user.id))
@@ -231,31 +245,14 @@ async def cmd_n(message: types.Message):
     with open("users.mpk", "wb") as f:
         f.write(msgspec.msgpack.encode(users))
 
-@dp.message(Command("pose"))
-async def cmd_pose(message: types.Message):
-    poses = os.listdir("poses")
-    pose = message.text.split()[1].strip().lower()
-    if pose == "clear":
-        pose = None
-    elif not pose + ".jpg" in poses:
-        await message.answer("Позы не существует!")
-        return None
-    with open("users.mpk", "rb") as f:
-        users = msgspec.msgpack.decode(f.read(), type=models.Users)
-        user = users.get_user(message.from_user.id)
-        user.generation_settings.pose = pose
-    with open("users.mpk", "wb") as f:
-        f.write(msgspec.msgpack.encode(users))
-    await message.answer("Поза изменена.")
-
 @dp.message(F.photo)
 async def handle_photo(message: types.Message):
-    if not str(message.from_user.id) == admin:
+    if not hasattr(message, "caption"):
+        await message.answer("Пустой запрос.")
         return None
     photo = message.photo[-1]
-    name = message.caption.strip()
-    await bot.download(photo, destination=f"poses/{name}.jpg")
-    await message.answer("Поза успешно добавлена!")
+    name = random.randint(10000, 100000)
+    await bot.download(photo, destination=f"img2img/{name}.jpg")
 
 @dp.message(Command("model"))
 async def cmd_model(message: types.Message):
@@ -349,31 +346,17 @@ async def cmd_image(message: types.Message):
 
     tis = load_tis(message.text.replace("/image ", ""))
 
-    source_image = None
-    image_is_control = None
-    control_type = None
-    denoising_strength = None
-    if user.generation_settings.pose is not None:
-        source_image = await horde.convert_image("poses/" + user.generation_settings.pose + ".jpg")
-        image_is_control = True
-        control_type = "canny"
-        denoising_streangth = 0.8
-
     params = ModelGenerationInputStable(
         sampler_name = user.generation_settings.sampler,
         cfg_scale = user.generation_settings.cfg_scale,
         height = user.generation_settings.height,
         width = user.generation_settings.width,
         steps = user.generation_settings.steps,
-        karras = True,
         loras = loras,
         n = user.generation_settings.n,
-        post_processing = None,
-        hires_fix = True,
+        post_processing = ["CodeFormers", "GFPGAN", "RealESRGAN_x4plus"],
+        hires_fix = user.generation_settings.hires_fix,
         tis = tis,
-        image_is_control = image_is_control,
-        control_type = control_type,
-        denoising_strength = denoising_strength
     )
 
     model = user.generation_settings.model
@@ -390,7 +373,6 @@ async def cmd_image(message: types.Message):
         models = model,
         r2 = True,
         slow_workers = False,
-        source_image = source_image
     )
     try:
         request = await horde.txt2img_request(payload)

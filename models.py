@@ -15,6 +15,7 @@ class GenerationSettings(msgspec.Struct):
     n: int = 1
     sampler: str = "k_lms"
     pose: str | None = None
+    hires_fix: bool = True
 
 class User(msgspec.Struct):
     id: int
