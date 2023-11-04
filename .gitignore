@@ -2,6 +2,13 @@ dbs/*.mpk
 users.mpk
 images/*.webp
 img2img/*.jpg
+venv/
+horde_token.txt
+tg_token.txt
+admin.txt
+tis.json
+loras.txt
+poses
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
