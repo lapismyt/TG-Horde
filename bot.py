@@ -389,8 +389,15 @@ async def cmd_image(message: types.Message):
         slow_workers = False,
         source_image = source_image
     )
-
-    request = await horde.txt2img_request(payload)
+    try:
+        request = await horde.txt2img_request(payload)
+    except:
+        with open("users.mpk", "rb") as f:
+            users = msgspec.msgpack.decode(f.read(), type=models.Users)
+        user = users.get_user(message.from_user.id)
+        user.queued = False
+        with open("users.mpk", "wb"):
+            f.write(msgspec.msgpack.encode(users))
     await asyncio.sleep(5)
     status = await horde.generate_check(request.id)
     eta = status.wait_time
