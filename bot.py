@@ -353,7 +353,7 @@ async def cmd_image(message: types.Message):
     image_is_control = None
     control_type = None
     if user.generation_settings.pose is not None:
-        source_image = horde.convert_image(user.generation_settings.pose)
+        source_image = await horde.convert_image(user.generation_settings.pose)
         image_is_control = True
         control_type = "depth"
 
