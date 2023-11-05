@@ -18,6 +18,9 @@ import re
 import json
 import random
 import os, sys
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+import shutil
+from PIL import Image
 
 with open("admin.txt") as f: admin = f.read().strip()
 with open("horde_token.txt") as f: horde_api_key = f.read().strip()
@@ -25,8 +28,13 @@ with open("tg_token.txt") as f: token = f.read().strip()
 
 dp = Dispatcher()
 bot = Bot(token=token, parse_mode=ParseMode.HTML)
+scheduler = AsyncIOScheduler()
 
 samplers = ["k_lms", "k_heun", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a", "k_dpm_fast", "k_dpm_adaptive", "k_dpmpp_2s_a", "k_dpmpp_2m", "dpmsolver", "k_dpmpp_sde", "ddim"]
+
+def copy_db():
+    new = f"dbs/{str(int(time.time()))}.mpk"
+    shutil.copy2("users.mpk", new)
 
 def parse_loras(text):
     with open("loras.txt", "r") as f:
@@ -66,19 +74,20 @@ def load_tis(prompt):
 
 @dp.message(Command("strength"))
 async def cmd_strength(message: types.Message):
-    with open("users.mpk", "rb") as f:
-        users = msgspec.msgpack.decode(f.read(), type=models.Users)
-    with open("users.mpk", "wb") as f:
+    async with aiofiles.open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode((await f.read()), type=models.Users)
+    async with aiofiles.open("users.mpk", "wb") as f:
         strength = float(message.text.split()[1])
         user = users.get_user(message.from_user.id)
         user.generation_settings.strength = strength
-        f.write(msgspec.msgpack.encode(users))
+        await f.write(msgspec.msgpack.encode(users))
+    await message.answer("Сила: " + str(strength))
 
 @dp.message(Command("sendall"))
 async def cmd_sendall(message: types.Message):
     if message.from_user.id == int(admin):
-        with open("users.mpk", "rb") as f:
-            users = msgspec.msgpack.decode(f.read(), type=models.Users)
+        async with aiofiles.open("users.mpk", "rb") as f:
+            users = msgspec.msgpack.decode((await f.read()), type=models.Users)
         for usr in users.all:
             try:
                 await message.reply_to_message.forward(usr.id)
@@ -88,33 +97,31 @@ async def cmd_sendall(message: types.Message):
 @dp.message(Command("add_ti"))
 async def cmd_add_ti(message: types.Message):
     if message.from_user.id == int(admin):
-        with open("tis.json") as f:
+        async with aiofiles.open("tis.json") as f:
             tis = json.load(f)
         tis[message.text.split()[1]] = message.text.split()[2]
-        with open("tis.json", "w") as f:
+        async with aiofiles.open("tis.json", "w") as f:
             json.dump(tis, f)
         await message.answer("Magic TI добавлена!")
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    f = open("users.mpk", "rb")
-    users = msgspec.msgpack.decode(f.read(), type=models.Users)
-    f.close()
+    async with aiofiles.open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode((await f.read()), type=models.Users)
     user = users.get_user(message.from_user.id)
     if user is None:
         user = models.User(id=message.from_user.id)
         users.all.append(user)
         users = msgspec.msgpack.encode(users)
-        f = open("users.mpk", "wb")
-        f.write(users)
-        f.close()
+        async with aiofiles.open("users.mpk", "wb") as f:
+            await f.write(users)
     await message.answer("Привет! Я могу генерировать изображения по текстовому запросу. Если нужна помощь, пиши /help.")
 
 @dp.message(Command("lora"))
 async def cmd_lora(message: types.Message):
     if message.text.lower().strip() == "/lora":
-        with open("users.mpk", "rb") as f:
-            users = msgspec.msgpack.decode(f.read(), type=models.Users)
+        async with aiofiles.open("users.mpk", "rb") as f:
+            users = msgspec.msgpack.decode((await f.read()), type=models.Users)
         user = users.get_user(message.from_user.id)
         loras = user.generation_settings.loras
         if len(loras) >= 1:
@@ -126,12 +133,12 @@ async def cmd_lora(message: types.Message):
             await message.answer("У вас нет активных LoRA.")
         return None
     if message.text.lower().replace("/lora ", "") == "clear":
-        with open("users.mpk", "rb") as f:
-            users = msgspec.msgpack.decode(f.read(), type=models.Users)
+        async with aiofiles.open("users.mpk", "rb") as f:
+            users = msgspec.msgpack.decode((await f.read()), type=models.Users)
         user = users.get_user(message.from_user.id)
         user.generation_settings.loras = []
-        with open("users.mpk", "wb") as f:
-            f.write(msgspec.msgpack.encode(users))
+        async with aiofiles.open("users.mpk", "wb") as f:
+            await f.write(msgspec.msgpack.encode(users))
         await message.answer("LoRA очищены")
         return None
     selected = parse_loras(message.text.replace("/lora ", ""))
@@ -143,12 +150,12 @@ async def cmd_lora(message: types.Message):
             strength = selected[name]
             lora = models.LoraSettings(name, strength)
             loras.append(lora)
-        with open("users.mpk", "rb") as f:
-            users = msgspec.msgpack.decode(f.read(), type=models.Users)
+        async with aiofiles.open("users.mpk", "rb") as f:
+            users = msgspec.msgpack.decode((await f.read()), type=models.Users)
         user = users.get_user(message.from_user.id)
         user.generation_settings.loras = loras
-        with open("users.mpk", "wb") as f:
-            f.write(msgspec.msgpack.encode(users))
+        async with aiofiles.open("users.mpk", "wb") as f:
+            await f.write(msgspec.msgpack.encode(users))
         resp = f"Активные LoRA:\n\n"
         for lora in loras:
             resp += f"{lora.name}:{lora.strength}\n"
@@ -173,8 +180,8 @@ async def cmd_add_lora(message: types.Message):
 
 @dp.message(Command("nsfw"))
 async def cmd_nsfw(message: types.Message):
-    with open("users.mpk", "rb") as f:
-        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    async with aiofiles.open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode((await f.read()), type=models.Users)
     user = users.get_user(message.from_user.id)
     if user.generation_settings.nsfw:
         user.generation_settings.nsfw = False
@@ -182,13 +189,13 @@ async def cmd_nsfw(message: types.Message):
     else:
         user.generation_settings.nsfw = True
         await message.answer("NSFW режим включён.")
-    with open("users.mpk", "wb") as f:
-        f.write(msgspec.msgpack.encode(users))
+    async with aiofiles.open("users.mpk", "wb") as f:
+        await f.write(msgspec.msgpack.encode(users))
 
 @dp.message(Command("hires_fix"))
 async def cmd_nsfw(message: types.Message):
-    with open("users.mpk", "rb") as f:
-        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    async with aiofiles.open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode((await f.read()), type=models.Users)
     user = users.get_user(message.from_user.id)
     if user.generation_settings.hires_fix:
         user.generation_settings.hires_fix = False
@@ -196,8 +203,8 @@ async def cmd_nsfw(message: types.Message):
     else:
         user.generation_settings.hires_fix = True
         await message.answer("HiRes Fix включён.")
-    with open("users.mpk", "wb") as f:
-        f.write(msgspec.msgpack.encode(users))
+    async with aiofiles.open("users.mpk", "wb") as f:
+        await f.write(msgspec.msgpack.encode(users))
 
 @dp.message(Command("getid"))
 async def cmd_getid(message: types.Message):
@@ -205,8 +212,8 @@ async def cmd_getid(message: types.Message):
 
 @dp.message(Command("premium"))
 async def cmd_premium(message: types.Message):
-    with open("users.mpk", "rb") as f:
-        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    async with aiofiles.open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode((await f.read()), type=models.Users)
     user = users.get_user(message.from_user.id)
     if message.from_user.id == int(admin):
         usr = users.get_user(int(message.text.split()[1]))
@@ -218,29 +225,29 @@ async def cmd_premium(message: types.Message):
             usr.premium = False
             await bot.send_message(usr.id, "У вас больше нету премиума.")
             await message.answer(f"У пользователя {str(usr.id)} больше нету премиума.")
-        with open("users.mpk", "wb") as f:
-            f.write(msgspec.msgpack.encode(users))
+        async with aiofiles.open("users.mpk", "wb") as f:
+            await f.write(msgspec.msgpack.encode(users))
 
 @dp.message(Command("res"))
 async def cmd_res(message: types.Message):
-    with open("users.mpk", "rb") as f:
-        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    async with aiofiles.open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode((await f.read()), type=models.Users)
     user = users.get_user(message.from_user.id)
     try:
         width, height = map(int, message.text.lower().split()[1].split('x'))
         if 64 <= (width * height) <= (1024*2048):
             user.generation_settings.width = width
             user.generation_settings.height = height
-            with open("users.mpk", "wb") as f:
-                f.write(msgspec.msgpack.encode(users))
+            async with aiofiles.open("users.mpk", "wb") as f:
+                await f.write(msgspec.msgpack.encode(users))
     except:
         pass
     await message.answer(f"Текущее разрешение: {str(user.generation_settings.width)}x{str(user.generation_settings.height)}")
 
 @dp.message(Command("n"))
 async def cmd_n(message: types.Message):
-    with open("users.mpk", "rb") as f:
-        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    async with aiofiles.open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode((await f.read()), type=models.Users)
     user = users.get_user(message.from_user.id)
     if len(message.text.split()) != 2:
         await message.answer("Количество генерируемых изображений за раз: " + str(user.generation_settings.n) + ".")
@@ -252,26 +259,28 @@ async def cmd_n(message: types.Message):
         await message.answer("Количество генерируемых изображений за раз: " + str(user.generation_settings.n) + ".")
     else:
         await message.answer("Для этого нужен премиум.")
-    with open("users.mpk", "wb") as f:
-        f.write(msgspec.msgpack.encode(users))
+    async with aiofiles.open("users.mpk", "wb") as f:
+        await f.write(msgspec.msgpack.encode(users))
 
-@dp.message(F.photo)
+@dp.message(F.document)
 async def handle_photo(message: types.Message):
     if not hasattr(message, "caption"):
         await message.answer("Нет запроса.")
         return None
-    photo = message.photo[-1]
+    photo = message.document
+    if "image" not in photo.mime_type:
+        return None
     name = random.randint(10000, 100000) 
-    await bot.download(photo, destination=f"img2img/{name}.jpg")
-    with open("users.mpk", "rb") as f:
-        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    await bot.download(photo, destination=f"img2img/{name}.png")
+    async with aiofiles.open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode((await f.read()), type=models.Users)
     user = users.get_user(message.from_user.id)
     if user.queued:
         await message.answer("Сначала дождись окончания генерации.")
         return None
     user.queued = True
-    with open("users.mpk", "wb") as f:
-        f.write(msgspec.msgpack.encode(users))
+    async with aiofiles.open("users.mpk", "wb") as f:
+        await f.write(msgspec.msgpack.encode(users))
     msg = await message.answer("Подождите...")
     
     if user.generation_settings.loras is not None:
@@ -290,7 +299,7 @@ async def handle_photo(message: types.Message):
         steps = user.generation_settings.steps,
         loras = loras,
         n = user.generation_settings.n,
-        post_processing = ["CodeFormers", "GFPGAN", "RealESRGAN_x4plus"],
+        post_processing = ["CodeFormers", "RealESRGAN_x4plus"],
         hires_fix = user.generation_settings.hires_fix,
         tis = tis,
         denoising_strength = user.generation_settings.strength
@@ -303,24 +312,25 @@ async def handle_photo(message: types.Message):
         model = [model]
 
     payload = GenerationInput(
-        prompt = message.caption,
+        prompt = message.caption.removeprefix("inpainting: "),
         params = params,
         nsfw = user.generation_settings.nsfw,
         censor_nsfw = not user.generation_settings.nsfw,
         models = model,
         r2 = True,
         slow_workers = False,
-        source_image = horde.convert_image(f"img2img/{name}.jpg")
+        source_image = await horde.convert_image(f"img2img/{name}.png"),
+        source_processing = "inpainting" if message.caption.startswith("inpainting: ") else "img2img"
     )
     try:
         request = await horde.txt2img_request(payload)
     except:
-        with open("users.mpk", "rb") as f:
-            users = msgspec.msgpack.decode(f.read(), type=models.Users)
+        async with aiofiles.open("users.mpk", "rb") as f:
+            users = msgspec.msgpack.decode((await f.read()), type=models.Users)
         user = users.get_user(message.from_user.id)
         user.queued = False
-        with open("users.mpk", "wb"):
-            f.write(msgspec.msgpack.encode(users))
+        async with aiofiles.open("users.mpk", "wb") as f:
+            await f.write(msgspec.msgpack.encode(users))
     await asyncio.sleep(5)
     status = await horde.generate_check(request.id)
     eta = status.wait_time
@@ -347,12 +357,12 @@ async def handle_photo(message: types.Message):
             except:
                 pass
         except StatusNotFound:
-            with open("users.mpk", "rb") as f:
-                users = msgspec.msgpack.decode(f.read(), type=models.Users)
+            async with aiofiles.open("users.mpk", "rb") as f:
+                users = msgspec.msgpack.decode((await f.read()), type=models.Users)
             user = users.get_user(message.from_user.id)
             user.queued = False
-            with open("users.mpk", "wb") as f:
-                f.write(msgspec.msgpack.encode(users))
+            async with aiofiles.open("users.mpk", "wb") as f:
+                await f.write(msgspec.msgpack.encode(users))
             await message.answer("Ошибка! Не удалось сгенерировать изображение.")
             return None
         if status.done == 1:
@@ -360,12 +370,12 @@ async def handle_photo(message: types.Message):
         else:
             await asyncio.sleep(5)
 
-    with open("users.mpk", "rb") as f:
-        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    async with aiofiles.open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode((await f.read()), type=models.Users)
     user = users.get_user(message.from_user.id)
     user.queued = False
-    with open("users.mpk", "wb") as f:
-        f.write(msgspec.msgpack.encode(users))
+    async with aiofiles.open("users.mpk", "wb") as f:
+        await f.write(msgspec.msgpack.encode(users))
 
     img_status = await horde.generate_status(request.id)
     generations = img_status.generations
@@ -376,7 +386,7 @@ async def handle_photo(message: types.Message):
         async with aiohttp.ClientSession() as session:
             async with session.get(generation.img) as resp:
                 async with aiofiles.open(path, "wb") as f:
-                    f.write(await resp.content.read())
+                    await f.write(await resp.content.read())
 
 @dp.message(Command("model"))
 async def cmd_model(message: types.Message):
@@ -385,17 +395,17 @@ async def cmd_model(message: types.Message):
     model = None
     possible = []
     if message.text.lower() == "/model any":
-        with open("users.mpk", "rb") as f:
-            users = msgspec.msgpack.decode(f.read(), type=models.Users)
+        async with aiofiles.open("users.mpk", "rb") as f:
+            users = msgspec.msgpack.decode((await f.read()), type=models.Users)
         user = users.get_user(message.from_user.id)
         user.generation_settings.model = "ANY"
-        with open("users.mpk", "wb") as f:
-            f.write(msgspec.msgpack.encode(users))
+        async with aiofiles.open("users.mpk", "wb") as f:
+            await f.write(msgspec.msgpack.encode(users))
         await message.answer("Выбрана модель: ANY")
         return None
     elif message.text.lower() == "/model":
-        with open("users.mpk", "rb") as f:
-            users = msgspec.msgpack.decode(f.read(), type=models.Users)
+        async with aiofiles.open("users.mpk", "rb") as f:
+            users = msgspec.msgpack.decode((await f.read()), type=models.Users)
         user = users.get_user(message.from_user.id)
         if user.generation_settings.model.lower() == "any":
             model = "ANY"
@@ -410,13 +420,13 @@ async def cmd_model(message: types.Message):
         elif request.lower() in m.name.lower():
             possible.append(m.name)
     if model is not None:
-        with open("users.mpk", "rb") as f:
-            users = msgspec.msgpack.decode(f.read(), type=models.Users)
+        async with aiofiles.open("users.mpk", "rb") as f:
+            users = msgspec.msgpack.decode((await f.read()), type=models.Users)
         user = users.get_user(message.from_user.id)
         user.generation_settings.model = model
         await message.answer("Выбрана модель: " + model)
-        with open("users.mpk", "wb") as f:
-            f.write(msgspec.msgpack.encode(users))
+        async with aiofiles.open("users.mpk", "wb") as f:
+            await f.write(msgspec.msgpack.encode(users))
     else:
         additional = f""
         if len(possible) >= 1:
@@ -429,14 +439,14 @@ async def cmd_model(message: types.Message):
 async def cmd_sampler(message: types.Message):
     global samplers
     if message.text.lower().strip().replace("/sampler ", "") in samplers:
-        with open("users.mpk", "rb") as f:
-            users = msgspec.msgpack.decode(f.read(), type=models.Users)
+        async with aiofiles.open("users.mpk", "rb") as f:
+            users = msgspec.msgpack.decode((await f.read()), type=models.Users)
         user = users.get_user(message.from_user.id)
         user.generation_settings.sampler = message.text.lower().strip().replace("/sampler ", "")
         if user.generation_settings.sampler == "ddim":
             user.generation_settings.sampler = "DDIM"
-        with open("users.mpk", "wb") as f:
-            f.write(msgspec.msgpack.encode(users))
+        async with aiofiles.open("users.mpk", "wb") as f:
+            await f.write(msgspec.msgpack.encode(users))
         await message.answer("Сэмплер изменён.")
     else:
         await message.answer("Сэмплер не найден.\nДоступные сэмплеры:\n"+"\n".join(samplers))
@@ -448,8 +458,8 @@ async def cmd_loras(message: types.Message):
 
 @dp.message(Command("image"))
 async def cmd_image(message: types.Message):
-    with open("users.mpk", "rb") as f:
-        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    async with aiofiles.open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode((await f.read()), type=models.Users)
     user = users.get_user(message.from_user.id)
     if user.queued:
         await message.answer("Сначала дождись окончания генерации.")
@@ -458,8 +468,8 @@ async def cmd_image(message: types.Message):
         await message.answer("Нет запроса.")
         return None
     user.queued = True
-    with open("users.mpk", "wb") as f:
-        f.write(msgspec.msgpack.encode(users))
+    async with aiofiles.open("users.mpk", "wb") as f:
+        await f.write(msgspec.msgpack.encode(users))
     msg = await message.answer("Подождите...")
     
     if user.generation_settings.loras is not None:
@@ -478,7 +488,7 @@ async def cmd_image(message: types.Message):
         steps = user.generation_settings.steps,
         loras = loras,
         n = user.generation_settings.n,
-        post_processing = ["CodeFormers", "GFPGAN", "RealESRGAN_x4plus"],
+        post_processing = ["CodeFormers", "RealESRGAN_x4plus"],
         hires_fix = user.generation_settings.hires_fix,
         tis = tis,
     )
@@ -501,12 +511,12 @@ async def cmd_image(message: types.Message):
     try:
         request = await horde.txt2img_request(payload)
     except:
-        with open("users.mpk", "rb") as f:
-            users = msgspec.msgpack.decode(f.read(), type=models.Users)
+        async with aiofiles.open("users.mpk", "rb") as f:
+            users = msgspec.msgpack.decode((await f.read()), type=models.Users)
         user = users.get_user(message.from_user.id)
         user.queued = False
-        with open("users.mpk", "wb"):
-            f.write(msgspec.msgpack.encode(users))
+        async with aiofiles.open("users.mpk", "wb"):
+            await f.write(msgspec.msgpack.encode(users))
     await asyncio.sleep(5)
     status = await horde.generate_check(request.id)
     eta = status.wait_time
@@ -533,12 +543,12 @@ async def cmd_image(message: types.Message):
             except:
                 pass
         except StatusNotFound:
-            with open("users.mpk", "rb") as f:
-                users = msgspec.msgpack.decode(f.read(), type=models.Users)
+            async with aiofiles.open("users.mpk", "rb") as f:
+                users = msgspec.msgpack.decode((await f.read()), type=models.Users)
             user = users.get_user(message.from_user.id)
             user.queued = False
-            with open("users.mpk", "wb") as f:
-                f.write(msgspec.msgpack.encode(users))
+            async with aiofiles.open("users.mpk", "wb") as f:
+                await f.write(msgspec.msgpack.encode(users))
             await message.answer("Ошибка! Не удалось сгенерировать изображение.")
             return None
         if status.done == 1:
@@ -546,12 +556,12 @@ async def cmd_image(message: types.Message):
         else:
             await asyncio.sleep(5)
 
-    with open("users.mpk", "rb") as f:
-        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    async with aiofiles.open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode((await f.read()), type=models.Users)
     user = users.get_user(message.from_user.id)
     user.queued = False
-    with open("users.mpk", "wb") as f:
-        f.write(msgspec.msgpack.encode(users))
+    async with aiofiles.open("users.mpk", "wb") as f:
+        await f.write(msgspec.msgpack.encode(users))
 
     img_status = await horde.generate_status(request.id)
     generations = img_status.generations
@@ -562,12 +572,12 @@ async def cmd_image(message: types.Message):
         async with aiohttp.ClientSession() as session:
             async with session.get(generation.img) as resp:
                 async with aiofiles.open(path, "wb") as f:
-                    f.write(await resp.content.read())
+                    await f.write(await resp.content.read())
 
 @dp.message(Command("steps"))
 async def cmd_steps(message: types.Message):
-    with open("users.mpk", "rb") as f:
-        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    async with aiofiles.open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode((await f.read()), type=models.Users)
     user = users.get_user(message.from_user.id)
     if message.text.lower() == "/steps":
         await message.answer("Шаги: " + str(user.generation_settings.steps))
@@ -577,13 +587,13 @@ async def cmd_steps(message: types.Message):
         await message.answer("Шаги: " + str(user.generation_settings.steps))
     else:
         pass
-    with open("users.mpk", "wb") as f:
-        f.write(msgspec.msgpack.encode(users))
+    async with aiofiles.open("users.mpk", "wb") as f:
+        await f.write(msgspec.msgpack.encode(users))
 
 @dp.message(Command("cfg"))
 async def cmd_steps(message: types.Message):
-    with open("users.mpk", "rb") as f:
-        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    async with aiofiles.open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode((await f.read()), type=models.Users)
     user = users.get_user(message.from_user.id)
     if message.text.lower() == "/cfg":
         await message.answer("CFG Scale: " + str(user.generation_settings.cfg_scale))
@@ -592,9 +602,9 @@ async def cmd_steps(message: types.Message):
             user.generation_settings.cfg_scale = float(message.text.lower().split()[1])
         await message.answer("CFG Scale: " + str(user.generation_settings.cfg_scale))
     else:
-            pass
-    with open("users.mpk", "wb") as f:
-        f.write(msgspec.msgpack.encode(users))
+        pass
+    async with aiofiles.open("users.mpk", "wb") as f:
+        await f.write(msgspec.msgpack.encode(users))
 
 @dp.message(Command("kudos"))
 async def cmd_kudos(message: types.Message):
@@ -620,14 +630,16 @@ async def cmd_models(message: types.Message):
 
 async def main():
     global horde
+    global scheduler
     horde = StableHordeAPI(horde_api_key, api="https://aihorde.net/api/v2")
     logging.basicConfig(level=logging.INFO)
-    with open("users.mpk", "rb") as f:
-        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    async with aiofiles.open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode((await f.read()), type=models.Users)
     for usr in users.all:
         usr.queued = False
-    with open("users.mpk", "wb") as f:
-        f.write(msgspec.msgpack.encode(users))
+    async with aiofiles.open("users.mpk", "wb") as f:
+        await f.write(msgspec.msgpack.encode(users))
+    scheduler.add_job(copy_db, "interval", seconds=60*60)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
