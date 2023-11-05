@@ -270,8 +270,8 @@ async def handle_photo(message: types.Message):
     photo = message.document
     if "image" not in photo.mime_type:
         return None
-    name = random.randint(10000, 100000) 
-    await bot.download(photo, destination=f"img2img/{name}.png")
+    filename = photo.file_name
+    await bot.download(photo, destination=f"img2img/{filename}")
     async with aiofiles.open("users.mpk", "rb") as f:
         users = msgspec.msgpack.decode((await f.read()), type=models.Users)
     user = users.get_user(message.from_user.id)
@@ -291,6 +291,28 @@ async def handle_photo(message: types.Message):
 
     tis = load_tis(message.caption)
 
+    control_types = ["canny", "depth", "lineart", "hed", "normal", "openpose", "seg", "scribble", "fakescribbles", "hough"]
+
+    prompt = message.caption
+    source_processing = None
+    control_type = None
+    image_is_control = False
+    return_control_map = False
+
+    if prompt.startswith("inpainting: "):
+        prompt = prompt.removeprefix("inpainting: ")
+        source_processing = "inpainting"
+    elif prompt.startswith("get-"):
+        prompt = prompt.removeprefix("get-")
+        return_control_map = True
+
+    for c in control_types:
+        if prompt.startswith(f"{c}: "):
+            prompt = prompt.removeprefix(f"{c}: ")
+            control_type = c
+            image_is_control = True
+            break
+
     params = ModelGenerationInputStable(
         sampler_name = user.generation_settings.sampler,
         cfg_scale = user.generation_settings.cfg_scale,
@@ -299,10 +321,13 @@ async def handle_photo(message: types.Message):
         steps = user.generation_settings.steps,
         loras = loras,
         n = user.generation_settings.n,
-        post_processing = ["CodeFormers", "RealESRGAN_x4plus"],
+        post_processing = None,
         hires_fix = user.generation_settings.hires_fix,
         tis = tis,
-        denoising_strength = user.generation_settings.strength
+        denoising_strength = user.generation_settings.strength,
+        image_is_control = image_is_control,
+        control_type = control_type,
+        return_control_map = return_control_map
     )
 
     model = user.generation_settings.model
@@ -312,15 +337,15 @@ async def handle_photo(message: types.Message):
         model = [model]
 
     payload = GenerationInput(
-        prompt = message.caption.removeprefix("inpainting: "),
+        prompt = prompt,
         params = params,
         nsfw = user.generation_settings.nsfw,
         censor_nsfw = not user.generation_settings.nsfw,
         models = model,
         r2 = True,
         slow_workers = False,
-        source_image = await horde.convert_image(f"img2img/{name}.png"),
-        source_processing = "inpainting" if message.caption.startswith("inpainting: ") else "img2img"
+        source_image = await horde.convert_image(f"img2img/{filename}"),
+        source_processing = source_processing
     )
     try:
         request = await horde.txt2img_request(payload)
