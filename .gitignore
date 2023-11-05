@@ -1,7 +1,7 @@
 dbs/*.mpk
 users.mpk
 images/*.webp
-img2img/*.jpg
+img2img/*
 venv/
 horde_token.txt
 tg_token.txt
