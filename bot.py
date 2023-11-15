@@ -20,7 +20,7 @@ import random
 import os, sys
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import shutil
-from PIL import Image
+from PIL import Image, ImageSequence
 
 with open("admin.txt") as f: admin = f.read().strip()
 with open("horde_token.txt") as f: horde_api_key = f.read().strip()
@@ -274,6 +274,69 @@ async def cmd_n(message: types.Message):
         await message.answer("Для этого нужен премиум.")
     async with aiofiles.open("users.mpk", "wb") as f:
         await f.write(msgspec.msgpack.encode(users))
+
+@dp.message(F.gif)
+async def handle_gif(message: types.Message):
+    if not str(message.from_user.id) == str(adimn):
+        return None
+    else:
+        await message.answer("Падажи...")
+    gif = message.document
+    gif_index = int(time.time())
+    filename = f"anim-{gif_index}.gif"
+    folder = f"animations/{gif_index}"
+    os.makedirs(folder)
+    await bot.download(gif, filename)
+    with Image.open(filename) as gif:
+        index = 0
+        for frame in ImageSequence.iterator(gif):
+            frame.save(f"{folder}/{index}.jpg")
+            resize_image(f"{folder}/{index}.jpg")
+            with Image.open(f"{folder}/{index}.jpg") as im:
+                width = im.width
+                height = im.height
+            img = await horde.convert_image(f"{folder}/{index}.jpg")
+            params = ModelGenerationInputStable(
+                sampler_name = "k_euler_a",
+                cfg_scale = 8,
+                height = height,
+                width = width,
+                steps = 15,
+                denoising_strength = 1.0,
+                image_is_control = False,
+                control_type = "depth",
+                return_control_map = True,
+                clip_skip = 2
+            )
+            payload = GenerationInput(
+                prompt = " ",
+                params = params,
+                nsfw = True,
+                censor_nsfw = False,
+                models = None,
+                r2 = True,
+                slow_workers = False,
+                source_image = img,
+                source_processing = "img2img",
+                replacement_filter = True
+            )
+            request = await horde.txt2img_request(payload)
+            finished = False
+            while not finished:
+                status = await horde.generate_check(request.id)
+                if status.done == 1:
+                    finished = True
+                else:
+                    await asyncio.sleep(1)
+            generated = await horde.generate_status(request.id).generations[0].img
+            async with aiohttp.ClientSession() as session:
+                async with session.get(generation.img) as resp: 
+                    async with aiofiles.open(f"{folder}/{index}.webp", "wb") as f:
+                        await f.write(await resp.content.read())
+            os.remove(f"{folder}/{index}.jpg")
+            index += 1
+    os.remove(filename)
+    await message.answer(f"Анимация сохранена!\nИндекс: {gif_index}.")
 
 @dp.message(F.document)
 async def handle_photo(message: types.Message):
