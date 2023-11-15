@@ -32,9 +32,20 @@ scheduler = AsyncIOScheduler()
 
 samplers = ["k_lms", "k_heun", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a", "k_dpm_fast", "k_dpm_adaptive", "k_dpmpp_2s_a", "k_dpmpp_2m", "dpmsolver", "k_dpmpp_sde", "ddim"]
 
-def copy_db():
-    new = f"dbs/{str(int(time.time()))}.mpk"
-    shutil.copy2("users.mpk", new)
+def resize_image(filename):
+    with Image.open(filename) as image:
+        width, height = image.size
+        new_width = (width // 64) * 64
+        new_height = (height // 64) * 64
+        resized_image = image.resize((new_width, new_height))
+        resized_image.save(filename)
+
+@dp.message(Command("copy"))
+async def copy_db(message=None):
+    async with aiofiles.open("users.mpk", "rb") as f:
+        users = await f.read()
+    async with aiofiles.open(f"dbs/users-{round(time.time())}.mpk", "wb") as f:
+        await f.write(users)
 
 def parse_loras(text):
     with open("loras.txt", "r") as f:
@@ -77,7 +88,9 @@ async def cmd_strength(message: types.Message):
     async with aiofiles.open("users.mpk", "rb") as f:
         users = msgspec.msgpack.decode((await f.read()), type=models.Users)
     async with aiofiles.open("users.mpk", "wb") as f:
-        strength = float(message.text.split()[1])
+        try:
+            strength = float(message.text.split()[1])
+        except: return None
         user = users.get_user(message.from_user.id)
         user.generation_settings.strength = strength
         await f.write(msgspec.msgpack.encode(users))
@@ -97,10 +110,10 @@ async def cmd_sendall(message: types.Message):
 @dp.message(Command("add_ti"))
 async def cmd_add_ti(message: types.Message):
     if message.from_user.id == int(admin):
-        async with aiofiles.open("tis.json") as f:
+        with open("tis.json") as f:
             tis = json.load(f)
         tis[message.text.split()[1]] = message.text.split()[2]
-        async with aiofiles.open("tis.json", "w") as f:
+        with open("tis.json", "w") as f:
             json.dump(tis, f)
         await message.answer("Magic TI добавлена!")
 
@@ -115,7 +128,7 @@ async def cmd_start(message: types.Message):
         users = msgspec.msgpack.encode(users)
         async with aiofiles.open("users.mpk", "wb") as f:
             await f.write(users)
-    await message.answer("Привет! Я могу генерировать изображения по текстовому запросу. Если нужна помощь, пиши /help.")
+    await message.answer("Привет! Я могу генерировать изображения по текстовому запросу. Но сначала...\n\nОБЯЗАТЕЛЬНО, ПРОЧИТАЙ РУКОВОДСТВО - /help")
 
 @dp.message(Command("lora"))
 async def cmd_lora(message: types.Message):
@@ -264,6 +277,16 @@ async def cmd_n(message: types.Message):
 
 @dp.message(F.document)
 async def handle_photo(message: types.Message):
+    with open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    inpainting = False
+    if hasattr(message, "caption"):
+        if message.caption.startswith("inpainting: "):
+            inpainting = True
+    user = users.get_user(message.from_user.id)
+    if not user.premium and inpainting:
+        await message.answer("Для этого нужна премиум-подписка.")
+        return None
     if not hasattr(message, "caption"):
         await message.answer("Нет запроса.")
         return None
@@ -272,6 +295,10 @@ async def handle_photo(message: types.Message):
         return None
     filename = photo.file_name
     await bot.download(photo, destination=f"img2img/{filename}")
+    resize_image(f"img2img/{filename}")
+    with Image.open(f"img2img/{filename}") as img:
+        width = img.width
+        height = img.height
     async with aiofiles.open("users.mpk", "rb") as f:
         users = msgspec.msgpack.decode((await f.read()), type=models.Users)
     user = users.get_user(message.from_user.id)
@@ -314,20 +341,22 @@ async def handle_photo(message: types.Message):
             break
 
     params = ModelGenerationInputStable(
-        sampler_name = user.generation_settings.sampler,
+#        sampler_name = user.generation_settings.sampler,
+        sampler_name = "k_euler_a",
         cfg_scale = user.generation_settings.cfg_scale,
-        height = user.generation_settings.height,
-        width = user.generation_settings.width,
+        height = height,
+        width = width,
         steps = user.generation_settings.steps,
-        loras = loras,
+        loras = loras if not image_is_control else None,
         n = user.generation_settings.n,
-        post_processing = None,
-        hires_fix = user.generation_settings.hires_fix,
-        tis = tis,
+#        post_processing = None,
+        hires_fix = False,
+        tis = tis if not image_is_control else None,
         denoising_strength = user.generation_settings.strength,
-        image_is_control = image_is_control,
+        image_is_control = False,
         control_type = control_type,
-        return_control_map = return_control_map
+        return_control_map = return_control_map,
+        clip_skip = 2
     )
 
     model = user.generation_settings.model
@@ -345,17 +374,21 @@ async def handle_photo(message: types.Message):
         r2 = True,
         slow_workers = False,
         source_image = await horde.convert_image(f"img2img/{filename}"),
-        source_processing = source_processing
+        source_processing = source_processing,
+        replacement_filter = True
     )
     try:
         request = await horde.txt2img_request(payload)
-    except:
+    except BaseException as err:
         async with aiofiles.open("users.mpk", "rb") as f:
             users = msgspec.msgpack.decode((await f.read()), type=models.Users)
         user = users.get_user(message.from_user.id)
         user.queued = False
         async with aiofiles.open("users.mpk", "wb") as f:
             await f.write(msgspec.msgpack.encode(users))
+            print(repr(err))
+        await msg.edit_text("Ошибка!")
+        return None
     await asyncio.sleep(5)
     status = await horde.generate_check(request.id)
     eta = status.wait_time
@@ -532,16 +565,20 @@ async def cmd_image(message: types.Message):
         models = model,
         r2 = True,
         slow_workers = False,
+        replacement_filter = True
     )
     try:
         request = await horde.txt2img_request(payload)
-    except:
+    except BaseException as err:
         async with aiofiles.open("users.mpk", "rb") as f:
             users = msgspec.msgpack.decode((await f.read()), type=models.Users)
         user = users.get_user(message.from_user.id)
         user.queued = False
-        async with aiofiles.open("users.mpk", "wb"):
+        async with aiofiles.open("users.mpk", "wb") as f:
             await f.write(msgspec.msgpack.encode(users))
+        print(repr(err))
+        await msg.edit_text("Ошибка!")
+        return None
     await asyncio.sleep(5)
     status = await horde.generate_check(request.id)
     eta = status.wait_time
@@ -664,7 +701,6 @@ async def main():
         usr.queued = False
     async with aiofiles.open("users.mpk", "wb") as f:
         await f.write(msgspec.msgpack.encode(users))
-    scheduler.add_job(copy_db, "interval", seconds=60*60)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
