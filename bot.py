@@ -21,6 +21,7 @@ import os, sys
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import shutil
 from PIL import Image, ImageSequence
+from aiogram.types.input_file import FSInputFile
 
 with open("admin.txt") as f: admin = f.read().strip()
 with open("horde_token.txt") as f: horde_api_key = f.read().strip()
@@ -287,11 +288,12 @@ async def handle_gif(message: types.Message):
     folder = f"animations/{gif_index}"
     os.makedirs(folder)
     await bot.download(gif, filename)
-    with Image.open(filename) as gif:
-        index = 0
+    frames = []
+    with Image.open(filename).convert("RGBA") as gif:
         for frame in ImageSequence.iterator(gif):
             frame.save(f"{folder}/{index}.jpg")
             resize_image(f"{folder}/{index}.jpg")
+            frame = Image.open(f"{folder}/{index}.jpg").convert("RGBA")
             with Image.open(f"{folder}/{index}.jpg") as im:
                 width = im.width
                 height = im.height
@@ -304,8 +306,8 @@ async def handle_gif(message: types.Message):
                 steps = 15,
                 denoising_strength = 1.0,
                 image_is_control = False,
-                control_type = "depth",
-                return_control_map = True,
+                control_type = "canny",
+                return_control_map = False,
                 clip_skip = 2
             )
             payload = GenerationInput(
@@ -333,10 +335,20 @@ async def handle_gif(message: types.Message):
                 async with session.get(generation.img) as resp: 
                     async with aiofiles.open(f"{folder}/{index}.webp", "wb") as f:
                         await f.write(await resp.content.read())
+            frames.append(Image.open(f"{folder}/{index}.webp"))
             os.remove(f"{folder}/{index}.jpg")
-            index += 1
+            os.remove(f"{folder}/{index}.webp")
     os.remove(filename)
-    await message.answer(f"Анимация сохранена!\nИндекс: {gif_index}.")
+    frames[0].save(
+        filename,
+        save_all=True,
+        append_images=frames[1:],
+        optimize=True,
+        duration=[gif.info["duration"] for x in range(len(frames))]
+    )
+    file = FSInputFile(filename)
+    os.remove(filename)
+    await bot.send_document(message.chat.id, file)
 
 @dp.message(F.document)
 async def handle_photo(message: types.Message):
