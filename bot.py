@@ -277,7 +277,7 @@ async def cmd_n(message: types.Message):
 
 @dp.message(F.gif)
 async def handle_gif(message: types.Message):
-    if not str(message.from_user.id) == str(adimn):
+    if not str(message.from_user.id) == str(admin):
         return None
     else:
         await message.answer("Падажи...")
@@ -340,6 +340,9 @@ async def handle_gif(message: types.Message):
 
 @dp.message(F.document)
 async def handle_photo(message: types.Message):
+    if message.document.mime_type == "video/mp4":
+        await handle_gif(message)
+        return None
     with open("users.mpk", "rb") as f:
         users = msgspec.msgpack.decode(f.read(), type=models.Users)
     inpainting = False
