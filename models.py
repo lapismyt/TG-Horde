@@ -17,6 +17,7 @@ class GenerationSettings(msgspec.Struct):
     pose: str | None = None
     hires_fix: bool = True
     strength: float = 0.7
+    gif_prompt: str = "1girl ### EasyNegative, children"
 
 class User(msgspec.Struct):
     id: int
@@ -25,9 +26,11 @@ class User(msgspec.Struct):
     generations_left: int = 10
     generation_settings: GenerationSettings = GenerationSettings()
     queued: bool = False
+    images_generated: int = 0
 
 class Users(msgspec.Struct):
     all: list[User] = []
+    total_images: int = 0
     premium: list[User] = []
 
     def get_user(self, id):
