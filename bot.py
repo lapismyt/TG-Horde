@@ -363,7 +363,8 @@ async def handle_gif(message: types.Message):
                 trusted_workers = True,
                 source_image = img,
                 source_processing = "img2img",
-                replacement_filter = True
+                replacement_filter = True,
+                proxied_account = str(message.from_user.id)
             )
             done = False
             tries = 0
@@ -507,7 +508,8 @@ async def handle_photo(message: types.Message):
         slow_workers = not user.premium,
         source_image = await horde.convert_image(f"img2img/{filename}"),
         source_processing = source_processing,
-        replacement_filter = True
+        replacement_filter = True,
+        proxied_account = str(message.from_user.id)
     )
     try:
         request = await horde.txt2img_request(payload)
@@ -554,6 +556,9 @@ async def handle_photo(message: types.Message):
             async with aiofiles.open("users.mpk", "wb") as f:
                 await f.write(msgspec.msgpack.encode(users))
             await message.answer("Ошибка! Не удалось сгенерировать изображение.")
+            return None
+        except BaseException:
+            await message.answer("Неизвестная ошибка")
             return None
         if status.done == 1:
             finished = True
@@ -651,10 +656,10 @@ async def cmd_loras(message: types.Message):
 @dp.message(Command("image"))
 async def cmd_image(message: types.Message):
     if message.text is None:
-        await message.answer("ЧИТАЙ РУКОВОДСТВО, Б##ТЬ -> /help")
+        await message.answer("ЧИТАЙ РУКОВОДСТВО -> /help")
         return None
     elif message.text.lower() == "/image":
-        await message.answer("ЧИТАЙ РУКОВОДСТВО, Б##ТЬ -> /help")
+        await message.answer("ЧИТАЙ РУКОВОДСТВО -> /help")
         return None
     else:
         pass
@@ -688,7 +693,7 @@ async def cmd_image(message: types.Message):
         steps = user.generation_settings.steps,
         loras = loras,
         n = user.generation_settings.n,
-        post_processing = ["CodeFormers", "RealESRGAN_x4plus"],
+        post_processing = ["RealESRGAN_x4plus"],
         hires_fix = user.generation_settings.hires_fix,
         tis = tis,
     )
@@ -707,7 +712,8 @@ async def cmd_image(message: types.Message):
         models = model,
         r2 = True,
         slow_workers = not user.premium,
-        replacement_filter = True
+        replacement_filter = True,
+        proxied_account = str(message.from_user.id)
     )
     try:
         request = await horde.txt2img_request(payload)
@@ -754,6 +760,9 @@ async def cmd_image(message: types.Message):
             async with aiofiles.open("users.mpk", "wb") as f:
                 await f.write(msgspec.msgpack.encode(users))
             await message.answer("Ошибка! Не удалось сгенерировать изображение.")
+            return None
+        except BaseException:
+            await message.answer("Неизвестная ошибка")
             return None
         if status.done == 1:
             finished = True
