@@ -653,6 +653,25 @@ async def cmd_loras(message: types.Message):
     file = types.input_file.FSInputFile("loras.txt")
     await message.answer_document(file)
 
+@dp.message(Command("seed"))
+async def cmd_seed(message: types.Message):
+    async with aiofiles.open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode((await f.read()), type=models.Users)
+    user = users.get_user(message.from_user.id)
+
+    if message.text.lower() == "/seed":
+        pass
+    elif message.text.lower() == "/seed clear":
+        user.generation_settings.seed = None
+    elif len(message.text.split()) >= 2:
+        user.generation_settings.seed = message.text[6:]
+    else: pass
+
+    async with aiofiles.open("users.mpk", "wb") as f:
+        await f.write(msgspec.msgpack.encode(users))
+
+    message.answer(f"Seed: {user.generation_settings.seed}")
+
 @dp.message(Command("image"))
 async def cmd_image(message: types.Message):
     if message.text is None:
@@ -696,6 +715,7 @@ async def cmd_image(message: types.Message):
         post_processing = ["RealESRGAN_x4plus"],
         hires_fix = user.generation_settings.hires_fix,
         tis = tis,
+        seed = user.generation_settings.seed
     )
 
     model = user.generation_settings.model

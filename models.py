@@ -18,6 +18,7 @@ class GenerationSettings(msgspec.Struct):
     hires_fix: bool = True
     strength: float = 0.7
     gif_prompt: str = "1girl ### EasyNegative, children"
+    seed: int | str | None = None
 
 class User(msgspec.Struct):
     id: int
