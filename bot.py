@@ -44,11 +44,14 @@ def resize_image(filename):
         resized_image.save(filename)
 
 @dp.message(Command("copy"))
-async def copy_db(message=None):
+async def copy_db(message: types.Message):
+    filename = f"dbs/users-{round(time.time())}.mpk"
     async with aiofiles.open("users.mpk", "rb") as f:
         users = await f.read()
-    async with aiofiles.open(f"dbs/users-{round(time.time())}.mpk", "wb") as f:
+    async with aiofiles.open(filename, "wb") as f:
         await f.write(users)
+    file = types.input_file.FSInputFile(filename)
+    message.answer_document(file)
 
 def parse_loras(text):
     with open("loras.txt", "r") as f:
