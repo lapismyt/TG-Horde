@@ -716,7 +716,7 @@ async def cmd_image(message: types.Message):
             loras.append(ModelPayloadLorasStable(lora.name, model=lora.strength))
     else: loras = None
 
-    tis = load_tis(message.text.replace("/image ", ""))
+    tis = load_tis(message.text.removeprefix("/image "))
 
     post_processing = None # TODO
 
@@ -741,7 +741,7 @@ async def cmd_image(message: types.Message):
         model = [model]
 
     payload = GenerationInput(
-        prompt = message.text.removeprefix("/image ", ""),
+        prompt = message.text.removeprefix("/image "),
         params = params,
         nsfw = user.generation_settings.nsfw,
         censor_nsfw = not user.generation_settings.nsfw,
