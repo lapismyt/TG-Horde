@@ -819,7 +819,7 @@ async def cmd_image(message: types.Message):
     await msg.delete()
     for num, generation in enumerate(generations):
         path = f"images/{str(int(time.time()))}_{str(num)}.webp"
-        file = types.input_file.BufferedInputFile(generation.img, filename=f"{str(int(time.time()))}_{str(num)}.webp")
+        file = types.input_file.URLInputFile(generation.img, filename=f"{str(int(time.time()))}_{str(num)}.webp")
         await message.answer_document(file, caption=f"Seed: {generation.seed}")
         async with aiohttp.ClientSession() as session:
             async with session.get(generation.img) as resp:
