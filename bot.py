@@ -480,12 +480,14 @@ async def handle_photo(message: types.Message):
     elif prompt.startswith("get-"):
         prompt = prompt.removeprefix("get-")
         return_control_map = True
+    elif prompt.startswith("strict-"):
+        prompt = prompt.removeprefix("strict-")
+        image_is_control = True
 
     for c in control_types:
         if prompt.startswith(f"{c}: "):
             prompt = prompt.removeprefix(f"{c}: ")
             control_type = c
-            image_is_control = True
             break
 
     params = ModelGenerationInputStable(
@@ -501,7 +503,7 @@ async def handle_photo(message: types.Message):
         hires_fix = False,
         tis = tis,
         denoising_strength = 1.0 if image_is_control == True else user.generation_settings.strength,
-        image_is_control = False,
+        image_is_control = image_is_control,
         control_type = control_type,
         return_control_map = return_control_map,
         clip_skip = 2
