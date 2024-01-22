@@ -20,8 +20,10 @@ import random
 import os, sys
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import shutil
-from PIL import Image, ImageSequence
+from PIL import Image, ImageSequence, ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 from aiogram.types.input_file import FSInputFile
+import moviepy.editor as mp
 
 with open("admin.txt") as f: admin = f.read().strip()
 with open("horde_token.txt") as f: horde_api_key = f.read().strip()
@@ -129,7 +131,7 @@ async def cmd_start(message: types.Message):
         users = msgspec.msgpack.encode(users)
         async with aiofiles.open("users.mpk", "wb") as f:
             await f.write(users)
-    await message.answer("Привет! Я могу генерировать изображения по текстовому запросу. Но сначала...\n\nОБЯЗАТЕЛЬНО, ПРОЧИТАЙ РУКОВОДСТВО - /help")
+    await message.answer("Привет! Я могу генерировать изображения по текстовому запросу. Но сначала...\n/help\n\nИспользуя этот бот, вы автоматически соглашаетесь с Условиями использования (https://telegra.ph/Usloviya-ispolzovaniya--HordeAI-Bot-11-26)")
 
 @dp.message(Command("lora"))
 async def cmd_lora(message: types.Message):
@@ -177,7 +179,7 @@ async def cmd_lora(message: types.Message):
 
 @dp.message(Command("help"))
 async def cmd_help(message: types.Message):
-    await message.answer("https://telegra.ph/Kak-polzovatsya-HordeAI-Bot-10-21")
+    await message.answer("Руководство: https://telegra.ph/Kak-polzovatsya-HordeAI-Bot-10-21\nУсловия использования: https://telegra.ph/Usloviya-ispolzovaniya--HordeAI-Bot-11-26")
 
 @dp.message(Command("add_lora"))
 async def cmd_add_lora(message: types.Message):
@@ -205,6 +207,15 @@ async def cmd_nsfw(message: types.Message):
         await message.answer("NSFW режим включён.")
     async with aiofiles.open("users.mpk", "wb") as f:
         await f.write(msgspec.msgpack.encode(users))
+
+@dp.message(Command("stats"))
+async def cmd_stats(message: types.Message):
+    async with aiofiles.open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode((await f.read()), type=models.Users)
+    count = len(users.all)
+    total_imgs = users.total_images
+    your_imgs = users.get_user(message.from_user.id).images_generated
+    await message.answer(f"В боте на данный момент {count} пользователей. Всего сгенерировано {total_imgs} изображений, из них {your_imgs} сгенерировано вами.")
 
 @dp.message(Command("hires_fix"))
 async def cmd_nsfw(message: types.Message):
@@ -276,83 +287,127 @@ async def cmd_n(message: types.Message):
     async with aiofiles.open("users.mpk", "wb") as f:
         await f.write(msgspec.msgpack.encode(users))
 
+@dp.message(Command("gif"))
+async def cmd_gif(message: types.Message):
+    with open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    user = users.get_user(message.from_user.id)
+    user.generation_settings.gif_prompt = message.text.lower().replace("/gif ", "")
+    with open("users.mpk", "wb") as f:
+        f.write(msgspec.msgpack.encode(users))
+    await message.answer("Теперь можете отправить GIF")
+
 @dp.message(F.gif)
 async def handle_gif(message: types.Message):
-    if not str(message.from_user.id) == str(admin):
-        return None
+    with open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode(f.read(), type=models.Users)
+    user = users.get_user(message.from_user.id)
+    if user.premium:
+        await message.answer("Подождите. На это может понадобится несколько минут.")
     else:
-        await message.answer("Падажи...")
+        await message.answer("Эта функция доступна только с премиум-подпиской. Купить её можно за 150 рублей навсегда - @LapisMYT.")
+        return None
     gif = message.document
     gif_index = int(time.time())
+    filename_mp4 = f"anim-{gif_index}.mp4"
     filename = f"anim-{gif_index}.gif"
     folder = f"animations/{gif_index}"
     os.makedirs(folder)
-    await bot.download(gif, filename)
+    await bot.download(gif, filename_mp4)
+    clip = mp.VideoFileClip(filename_mp4)
+    clip.write_gif(filename)
+    clip.close()
+    os.remove(filename_mp4)
     frames = []
-    with Image.open(filename).convert("RGBA") as gif:
-        for frame in ImageSequence.iterator(gif):
-            frame.save(f"{folder}/{index}.jpg")
-            resize_image(f"{folder}/{index}.jpg")
-            frame = Image.open(f"{folder}/{index}.jpg").convert("RGBA")
-            with Image.open(f"{folder}/{index}.jpg") as im:
+    seed = random.randint(1, 99999999)
+    with Image.open(filename) as gif:
+        index = 0
+        if gif.n_frames > 80:
+            await message.answer("Должно быть не больше 80 кадров!")
+            return None
+        for frame in ImageSequence.Iterator(gif):
+            frame.save(f"{folder}/{index}.png")
+            resize_image(f"{folder}/{index}.png")
+            frame = Image.open(f"{folder}/{index}.png").convert("RGBA")
+            with Image.open(f"{folder}/{index}.png") as im:
                 width = im.width
                 height = im.height
-            img = await horde.convert_image(f"{folder}/{index}.jpg")
+            img = await horde.convert_image(f"{folder}/{index}.png")
+            if user.generation_settings.model.lower() == "any":
+                model = None
+            else:
+                model = [user.generation_settings.model]
+            tis = load_tis(user.generation_settings.gif_prompt)
             params = ModelGenerationInputStable(
-                sampler_name = "k_euler_a",
-                cfg_scale = 8,
+                sampler_name = "k_euler",
+                cfg_scale = user.generation_settings.cfg_scale,
                 height = height,
                 width = width,
-                steps = 15,
-                denoising_strength = 1.0,
+                steps = user.generation_settings.steps,
+                denoising_strength = user.generation_settings.strength,
                 image_is_control = False,
-                control_type = "canny",
+                control_type = "hed",
                 return_control_map = False,
-                clip_skip = 2
+                seed = str(seed),
+                clip_skip = 2,
+                tis = tis
             )
             payload = GenerationInput(
-                prompt = " ",
+                prompt = user.generation_settings.gif_prompt,
                 params = params,
-                nsfw = True,
-                censor_nsfw = False,
-                models = None,
+                nsfw = user.generation_settings.nsfw,
+                censor_nsfw = not user.generation_settings.nsfw,
+                models = model,
                 r2 = True,
-                slow_workers = False,
+                slow_workers = True,
+                trusted_workers = True,
                 source_image = img,
                 source_processing = "img2img",
-                replacement_filter = True
+                replacement_filter = True,
+                proxied_account = str(message.from_user.id)
             )
-            request = await horde.txt2img_request(payload)
-            finished = False
-            while not finished:
-                status = await horde.generate_check(request.id)
-                if status.done == 1:
-                    finished = True
+            done = False
+            tries = 0
+            while not done:
+                request = await horde.txt2img_request(payload)
+                finished = False
+                while not finished:
+                    status = await horde.generate_check(request.id)
+                    if status.done == 1:
+                        finished = True
+                    else:
+                        await asyncio.sleep(1)
+                generation = (await horde.generate_status(request.id)).generations[0]
+                if "censorship" in generation.gen_metadata:
+                    if tries >= 10:
+                        break
+                    else:
+                        tries += 1
                 else:
-                    await asyncio.sleep(1)
-            generated = await horde.generate_status(request.id).generations[0].img
+                    done = True
             async with aiohttp.ClientSession() as session:
                 async with session.get(generation.img) as resp: 
                     async with aiofiles.open(f"{folder}/{index}.webp", "wb") as f:
                         await f.write(await resp.content.read())
             frames.append(Image.open(f"{folder}/{index}.webp"))
-            os.remove(f"{folder}/{index}.jpg")
+            os.remove(f"{folder}/{index}.png")
             os.remove(f"{folder}/{index}.webp")
-    os.remove(filename)
+            index += 1
+        print(gif.n_frames)
+    filename_new = f"../BCloud/uploads/{filename}"
     frames[0].save(
-        filename,
+        filename_new,
         save_all=True,
         append_images=frames[1:],
         optimize=True,
-        duration=[gif.info["duration"] for x in range(len(frames))]
+        duration=83
     )
-    file = FSInputFile(filename)
     os.remove(filename)
-    await bot.send_document(message.chat.id, file)
+    await message.answer(f"http://lapismyt.space/uploads/{filename}")
 
 @dp.message(F.document)
 async def handle_photo(message: types.Message):
-    if message.document.mime_type == "video/mp4":
+    if message.document.mime_type in ["video/mp4"]:
         await handle_gif(message)
         return None
     with open("users.mpk", "rb") as f:
@@ -420,17 +475,17 @@ async def handle_photo(message: types.Message):
 
     params = ModelGenerationInputStable(
 #        sampler_name = user.generation_settings.sampler,
-        sampler_name = "k_euler_a",
+        sampler_name = "k_euler",
         cfg_scale = user.generation_settings.cfg_scale,
         height = height,
         width = width,
         steps = user.generation_settings.steps,
-        loras = loras if not image_is_control else None,
+        loras = loras,
         n = user.generation_settings.n,
 #        post_processing = None,
         hires_fix = False,
-        tis = tis if not image_is_control else None,
-        denoising_strength = user.generation_settings.strength,
+        tis = tis,
+        denoising_strength = 1.0 if image_is_control == True else user.generation_settings.strength,
         image_is_control = False,
         control_type = control_type,
         return_control_map = return_control_map,
@@ -450,10 +505,11 @@ async def handle_photo(message: types.Message):
         censor_nsfw = not user.generation_settings.nsfw,
         models = model,
         r2 = True,
-        slow_workers = False,
+        slow_workers = not user.premium,
         source_image = await horde.convert_image(f"img2img/{filename}"),
         source_processing = source_processing,
-        replacement_filter = True
+        replacement_filter = True,
+        proxied_account = str(message.from_user.id)
     )
     try:
         request = await horde.txt2img_request(payload)
@@ -501,6 +557,9 @@ async def handle_photo(message: types.Message):
                 await f.write(msgspec.msgpack.encode(users))
             await message.answer("Ошибка! Не удалось сгенерировать изображение.")
             return None
+        except BaseException:
+            await message.answer("Неизвестная ошибка")
+            return None
         if status.done == 1:
             finished = True
         else:
@@ -510,6 +569,8 @@ async def handle_photo(message: types.Message):
         users = msgspec.msgpack.decode((await f.read()), type=models.Users)
     user = users.get_user(message.from_user.id)
     user.queued = False
+    users.total_images += user.generation_settings.n
+    user.images_generated += user.generation_settings.n
     async with aiofiles.open("users.mpk", "wb") as f:
         await f.write(msgspec.msgpack.encode(users))
 
@@ -594,6 +655,14 @@ async def cmd_loras(message: types.Message):
 
 @dp.message(Command("image"))
 async def cmd_image(message: types.Message):
+    if message.text is None:
+        await message.answer("ЧИТАЙ РУКОВОДСТВО -> /help")
+        return None
+    elif message.text.lower() == "/image":
+        await message.answer("ЧИТАЙ РУКОВОДСТВО -> /help")
+        return None
+    else:
+        pass
     async with aiofiles.open("users.mpk", "rb") as f:
         users = msgspec.msgpack.decode((await f.read()), type=models.Users)
     user = users.get_user(message.from_user.id)
@@ -624,7 +693,7 @@ async def cmd_image(message: types.Message):
         steps = user.generation_settings.steps,
         loras = loras,
         n = user.generation_settings.n,
-        post_processing = ["CodeFormers", "RealESRGAN_x4plus"],
+        post_processing = ["RealESRGAN_x4plus"],
         hires_fix = user.generation_settings.hires_fix,
         tis = tis,
     )
@@ -642,8 +711,9 @@ async def cmd_image(message: types.Message):
         censor_nsfw = not user.generation_settings.nsfw,
         models = model,
         r2 = True,
-        slow_workers = False,
-        replacement_filter = True
+        slow_workers = not user.premium,
+        replacement_filter = True,
+        proxied_account = str(message.from_user.id)
     )
     try:
         request = await horde.txt2img_request(payload)
@@ -691,6 +761,9 @@ async def cmd_image(message: types.Message):
                 await f.write(msgspec.msgpack.encode(users))
             await message.answer("Ошибка! Не удалось сгенерировать изображение.")
             return None
+        except BaseException:
+            await message.answer("Неизвестная ошибка")
+            return None
         if status.done == 1:
             finished = True
         else:
@@ -700,6 +773,8 @@ async def cmd_image(message: types.Message):
         users = msgspec.msgpack.decode((await f.read()), type=models.Users)
     user = users.get_user(message.from_user.id)
     user.queued = False
+    users.total_images += user.generation_settings.n
+    user.images_generated += user.generation_settings.n
     async with aiofiles.open("users.mpk", "wb") as f:
         await f.write(msgspec.msgpack.encode(users))
 

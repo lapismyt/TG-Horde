@@ -3,3 +3,5 @@ git+https://github.com/lapismyt/StableHordeAPI.py
 aiogram==3
 Pillow
 apscheduler
+moviepy
+g4f
