@@ -707,6 +707,8 @@ async def cmd_image(message: types.Message):
 
     tis = load_tis(message.text.replace("/image ", ""))
 
+    post_processing = None # TODO
+
     params = ModelGenerationInputStable(
         sampler_name = user.generation_settings.sampler,
         cfg_scale = user.generation_settings.cfg_scale,
