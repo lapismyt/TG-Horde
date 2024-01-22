@@ -684,7 +684,6 @@ async def cmd_seed(message: types.Message):
 
     async with aiofiles.open("users.mpk", "wb") as f:
         await f.write(msgspec.msgpack.encode(users))
-
     await message.answer(f"Seed: {user.generation_settings.seed}")
 
 @dp.message(Command("image"))
@@ -727,10 +726,10 @@ async def cmd_image(message: types.Message):
         steps = user.generation_settings.steps,
         loras = loras,
         n = user.generation_settings.n,
+        post_processing = post_processing,
         hires_fix = user.generation_settings.hires_fix,
         tis = tis,
-        seed = user.generation_settings.seed,
-        post_processing = ["4x_AnimeSharp"]
+        seed = user.generation_settings.seed
     )
 
     model = user.generation_settings.model
@@ -740,7 +739,7 @@ async def cmd_image(message: types.Message):
         model = [model]
 
     payload = GenerationInput(
-        prompt = message.text.replace("/image ", ""),
+        prompt = message.text.removeprefix("/image ", ""),
         params = params,
         nsfw = user.generation_settings.nsfw,
         censor_nsfw = not user.generation_settings.nsfw,
