@@ -715,7 +715,7 @@ async def cmd_image(message: types.Message):
         steps = user.generation_settings.steps,
         loras = loras,
         n = user.generation_settings.n,
-        post_processing = ["RealESRGAN_x4plus"],
+        post_processing = post_processing,
         hires_fix = user.generation_settings.hires_fix,
         tis = tis,
         seed = user.generation_settings.seed
@@ -728,7 +728,7 @@ async def cmd_image(message: types.Message):
         model = [model]
 
     payload = GenerationInput(
-        prompt = message.text.replace("/image ", ""),
+        prompt = message.text.removeprefix("/image ", ""),
         params = params,
         nsfw = user.generation_settings.nsfw,
         censor_nsfw = not user.generation_settings.nsfw,
