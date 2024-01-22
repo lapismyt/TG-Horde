@@ -9,6 +9,8 @@ admin.txt
 tis.json
 loras.txt
 poses
+loras.txt
+tg_token.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

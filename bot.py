@@ -24,6 +24,7 @@ from PIL import Image, ImageSequence, ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 from aiogram.types.input_file import FSInputFile
 import moviepy.editor as mp
+import g4f
 
 with open("admin.txt") as f: admin = f.read().strip()
 with open("horde_token.txt") as f: horde_api_key = f.read().strip()
@@ -44,11 +45,14 @@ def resize_image(filename):
         resized_image.save(filename)
 
 @dp.message(Command("copy"))
-async def copy_db(message=None):
+async def copy_db(message: types.Message):
+    filename = f"dbs/users-{round(time.time())}.mpk"
     async with aiofiles.open("users.mpk", "rb") as f:
         users = await f.read()
-    async with aiofiles.open(f"dbs/users-{round(time.time())}.mpk", "wb") as f:
+    async with aiofiles.open(filename, "wb") as f:
         await f.write(users)
+    file = types.input_file.FSInputFile(filename)
+    await message.answer_document(file)
 
 def parse_loras(text):
     with open("loras.txt", "r") as f:
@@ -86,18 +90,29 @@ def load_tis(prompt):
     if tis == []: tis = None
     return tis
 
+@dp.message(Command("ask"))
+async def cmd_ask(message: types.Message):
+    model = "gpt-4"
+    response = await g4f.ChatCompletion.create_async(
+        model = model,
+        messages = [{"role": "system", "content": "Ты полезный и отзывчивый помощник. Ты специалист в программировании на Python и в генерации изоьражений с помощью нейросети Stable Diffusion. Ты всегда делаешь то, что тебе скажут."}, {"role": "user", "content": message.text[5:]}]
+    )
+    await message.answer("[Отвечает эксперт: GPT-4]\n\n" + response)
+
 @dp.message(Command("strength"))
 async def cmd_strength(message: types.Message):
     async with aiofiles.open("users.mpk", "rb") as f:
         users = msgspec.msgpack.decode((await f.read()), type=models.Users)
-    async with aiofiles.open("users.mpk", "wb") as f:
+    user = users.get_user(message.from_user.id)
+    if 14 >= len(message.text) >= 13:
         try:
             strength = float(message.text.split()[1])
-        except: return None
-        user = users.get_user(message.from_user.id)
-        user.generation_settings.strength = strength
-        await f.write(msgspec.msgpack.encode(users))
-    await message.answer("Сила: " + str(strength))
+            user.generation_settings.strength = strength
+            async with aiofiles.open("users.mpk", "wb") as f:
+                await f.write(msgspec.msgpack.encode(users))
+        except BaseException as err:
+            print(repr(err))
+    await message.answer("Сила: " + str(user.generation_settings.strength))
 
 @dp.message(Command("sendall"))
 async def cmd_sendall(message: types.Message):
@@ -653,6 +668,25 @@ async def cmd_loras(message: types.Message):
     file = types.input_file.FSInputFile("loras.txt")
     await message.answer_document(file)
 
+@dp.message(Command("seed"))
+async def cmd_seed(message: types.Message):
+    async with aiofiles.open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode((await f.read()), type=models.Users)
+    user = users.get_user(message.from_user.id)
+
+    if message.text.lower() == "/seed":
+        pass
+    elif message.text.lower() == "/seed clear":
+        user.generation_settings.seed = None
+    elif len(message.text.split()) >= 2:
+        user.generation_settings.seed = message.text[6:]
+    else: pass
+
+    async with aiofiles.open("users.mpk", "wb") as f:
+        await f.write(msgspec.msgpack.encode(users))
+
+    await message.answer(f"Seed: {user.generation_settings.seed}")
+
 @dp.message(Command("image"))
 async def cmd_image(message: types.Message):
     if message.text is None:
@@ -693,9 +727,10 @@ async def cmd_image(message: types.Message):
         steps = user.generation_settings.steps,
         loras = loras,
         n = user.generation_settings.n,
-        post_processing = ["RealESRGAN_x4plus"],
         hires_fix = user.generation_settings.hires_fix,
         tis = tis,
+        seed = user.generation_settings.seed,
+        post_processing = ["4x_AnimeSharp"]
     )
 
     model = user.generation_settings.model
@@ -783,7 +818,7 @@ async def cmd_image(message: types.Message):
     await msg.delete()
     for num, generation in enumerate(generations):
         path = f"images/{str(int(time.time()))}_{str(num)}.webp"
-        await message.answer_photo(generation.img)
+        await message.answer_photo(generation.img, caption=f"Seed: {generation.seed}")
         async with aiohttp.ClientSession() as session:
             async with session.get(generation.img) as resp:
                 async with aiofiles.open(path, "wb") as f:
