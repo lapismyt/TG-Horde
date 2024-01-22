@@ -4,3 +4,4 @@ aiogram==3
 Pillow
 apscheduler
 moviepy
+g4f
