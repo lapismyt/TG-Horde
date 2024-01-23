@@ -25,6 +25,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 from aiogram.types.input_file import FSInputFile
 import moviepy.editor as mp
 import g4f
+import subprocess
 
 with open("admin.txt") as f: admin = f.read().strip()
 with open("horde_token.txt") as f: horde_api_key = f.read().strip()
@@ -320,7 +321,7 @@ async def handle_gif(message: types.Message):
     if user.premium:
         await message.answer("Подождите. На это может понадобится несколько минут.")
     else:
-        await message.answer("Эта функция доступна только с премиум-подпиской. Купить её можно за 150 рублей навсегда - @LapisMYT.")
+        await message.answer("Эта функция доступна только с премиум-подпиской. Купить её можно у меня - @LapisMYT.")
         return None
     gif = message.document
     gif_index = int(time.time())
@@ -417,6 +418,9 @@ async def handle_gif(message: types.Message):
         optimize=True,
         duration=83
     )
+    await message.answer("Интерполирую...")
+    ffmpeg_command = f'ffmpeg -i {filename} -vf "minterpolate=\'mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1:fps=60\'" {filename_new}'
+    subprocess.run(ffmpeg_command, shell=True)
     os.remove(filename)
     await message.answer(f"http://lapismyt.space/uploads/{filename}")
 
