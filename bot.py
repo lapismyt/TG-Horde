@@ -354,6 +354,11 @@ async def handle_gif(message: types.Message):
             else:
                 model = [user.generation_settings.model]
             tis = load_tis(user.generation_settings.gif_prompt)
+            if user.generation_settings.loras is not None:
+                loras = []
+                for lora in user.generation_settings.loras:
+                    loras.append(ModelPayloadLorasStable(lora.name, model=lora.strength))
+            else: loras = None
             params = ModelGenerationInputStable(
                 sampler_name = "k_euler",
                 cfg_scale = user.generation_settings.cfg_scale,
@@ -366,7 +371,8 @@ async def handle_gif(message: types.Message):
                 return_control_map = False,
                 seed = str(seed),
                 clip_skip = 2,
-                tis = tis
+                tis = tis,
+                loras = loras
             )
             payload = GenerationInput(
                 prompt = user.generation_settings.gif_prompt,
