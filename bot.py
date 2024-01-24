@@ -187,7 +187,7 @@ async def cmd_lora(message: types.Message):
         loras = []
         for name in selected.keys():
             strength = selected[name]
-            lora = models.LoraSettings(name, strength)
+            lora = models.LoraSettings(name=name, model=strength, is_version=True)
             loras.append(lora)
         async with aiofiles.open("users.mpk", "rb") as f:
             users = msgspec.msgpack.decode((await f.read()), type=models.Users)
