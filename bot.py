@@ -187,7 +187,7 @@ async def cmd_lora(message: types.Message):
         loras = []
         for name in selected.keys():
             strength = selected[name]
-            lora = models.LoraSettings(name=name, model=strength, is_version=True)
+            lora = models.LoraSettings(name, strength)
             loras.append(lora)
         async with aiofiles.open("users.mpk", "rb") as f:
             users = msgspec.msgpack.decode((await f.read()), type=models.Users)
@@ -364,7 +364,7 @@ async def handle_gif(message: types.Message):
             if user.generation_settings.loras is not None:
                 loras = []
                 for lora in user.generation_settings.loras:
-                    loras.append(ModelPayloadLorasStable(lora.name, model=lora.strength))
+                    loras.append(ModelPayloadLorasStable(lora.name, model=lora.strength, is_version=True))
             else: loras = None
             params = ModelGenerationInputStable(
                 sampler_name = "k_euler",
@@ -478,7 +478,7 @@ async def handle_photo(message: types.Message):
     if user.generation_settings.loras is not None:
         loras = []
         for lora in user.generation_settings.loras:
-            loras.append(ModelPayloadLorasStable(lora.name, model=lora.strength))
+            loras.append(ModelPayloadLorasStable(lora.name, model=lora.strength, is_version=True))
     else: loras = None
 
     tis = load_tis(message.caption)
@@ -682,10 +682,6 @@ async def cmd_sampler(message: types.Message):
     else:
         await message.answer("Сэмплер не найден.\nДоступные сэмплеры:\n"+"\n".join(samplers))
 
-@dp.message(Command("loras"))
-async def cmd_loras(message: types.Message):
-    file = types.input_file.FSInputFile("loras.txt")
-    await message.answer_document(file)
 
 @dp.message(Command("seed"))
 async def cmd_seed(message: types.Message):
@@ -732,7 +728,7 @@ async def cmd_image(message: types.Message):
     if user.generation_settings.loras is not None:
         loras = []
         for lora in user.generation_settings.loras:
-            loras.append(ModelPayloadLorasStable(lora.name, model=lora.strength))
+            loras.append(ModelPayloadLorasStable(lora.name, model=lora.strength, is_version=True))
     else: loras = None
 
     tis = load_tis(message.text.removeprefix("/image "))
