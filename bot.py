@@ -26,6 +26,7 @@ from aiogram.types.input_file import FSInputFile
 import moviepy.editor as mp
 import g4f
 import subprocess
+import requests
 
 with open("admin.txt") as f: admin = f.read().strip()
 with open("horde_token.txt") as f: horde_api_key = f.read().strip()
@@ -56,11 +57,17 @@ async def copy_db(message: types.Message):
     await message.answer_document(file)
 
 def parse_loras(text):
-    with open("loras.txt", "r") as f:
-        loras = f.read().strip().splitlines()
     for item in text.split():
-        if item.split(":")[0] not in loras:
+        if False:
             return None
+        else:
+            try:
+                resp = requests.get(f"https://civitai.com/api/v1/model-versions/{item.split(':')[0]}")
+                if not resp.status_code == 200:
+                    return None
+            except BaseException as err:
+                print(repr(err))
+                return None
     out = {item.split(":")[0]: float(item.split(":")[1]) for item in text.split()}
     if out == []: out = None
     return out
