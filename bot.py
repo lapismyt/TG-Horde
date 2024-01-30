@@ -80,10 +80,10 @@ def parse_tis(text):
             return None
         else:
             try:
-                resp = requests.get(f"https://civitai.com/api/v1/model-versions/{item.split(':')[0]}")
+                resp = requests.get(f"https://civitai.com/api/v1/models/{item.split(':')[0]}")
                 if not resp.status_code == 200:
                     return None
-                if not resp.json()["model"]["type"] == "TextualInversion":
+                if not resp.json()["type"] == "TextualInversion":
                     return None
             except BaseException as err:
                 print(repr(err))
