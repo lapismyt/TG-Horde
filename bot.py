@@ -65,6 +65,8 @@ def parse_loras(text):
                 resp = requests.get(f"https://civitai.com/api/v1/model-versions/{item.split(':')[0]}")
                 if not resp.status_code == 200:
                     return None
+                if not resp.json()["model"]["type"] == "LORA":
+                    return None
             except BaseException as err:
                 print(repr(err))
                 return None
@@ -72,38 +74,30 @@ def parse_loras(text):
     if out == []: out = None
     return out
 
-def load_tis(prompt):
-    tis = []
-    if " ### " in prompt:
-        prompt, negprompt = prompt.split(" ### ")
-    else: negprompt = None
-    available = json.load(open("tis.json"))
-    for ti in available.keys():
-        if ti.lower() in prompt.lower():
-            tis.append(
-                ModelPayloadTextualInversionsStable(
-                    name = available[ti],
-                    inject_ti = "prompt"
-                )
-            )
-        elif negprompt is not None:
-            if ti.lower() in negprompt.lower():
-                tis.append(
-                    ModelPayloadTextualInversionsStable(
-                        name = available[ti],
-                        inject_ti = "negprompt"
-                    )
-                )
-        else: pass
-    if tis == []: tis = None
-    return tis
+def parse_tis(text):
+    for item in text.split():
+        if False:
+            return None
+        else:
+            try:
+                resp = requests.get(f"https://civitai.com/api/v1/model-versions/{item.split(':')[0]}")
+                if not resp.status_code == 200:
+                    return None
+                if not resp.json()["model"]["type"] == "TextualInversion":
+                    return None
+            except BaseException as err:
+                print(repr(err))
+                return None
+    out = {item.split(":")[0]: float(item.split(":")[1]) for item in text.split()}
+    if out == []: out = None
+        return out
 
 @dp.message(Command("ask"))
 async def cmd_ask(message: types.Message):
     model = "gpt-4"
     response = await g4f.ChatCompletion.create_async(
         model = model,
-        messages = [{"role": "system", "content": "Ты полезный и отзывчивый помощник. Ты специалист в программировании на Python и в генерации изоьражений с помощью нейросети Stable Diffusion. Ты всегда делаешь то, что тебе скажут."}, {"role": "user", "content": message.text[5:]}]
+        messages = [{"role": "system", "content": "Ты полезный и отзывчивый помощник. Ты специалист в программировании на Python и в создании запросов для Stable Diffusion, в виде списка тегов booru. Ты всегда делаешь то, что тебе скажут."}, {"role": "user", "content": message.text[5:]}]
     )
     await message.answer("[Отвечает эксперт: GPT-4]\n\n" + response)
 
@@ -133,16 +127,6 @@ async def cmd_sendall(message: types.Message):
             except:
                 pass
 
-@dp.message(Command("add_ti"))
-async def cmd_add_ti(message: types.Message):
-    if message.from_user.id == int(admin):
-        with open("tis.json") as f:
-            tis = json.load(f)
-        tis[message.text.split()[1]] = message.text.split()[2]
-        with open("tis.json", "w") as f:
-            json.dump(tis, f)
-        await message.answer("Magic TI добавлена!")
-
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     async with aiofiles.open("users.mpk", "rb") as f:
@@ -166,12 +150,12 @@ async def cmd_lora(message: types.Message):
         if len(loras) >= 1:
             resp = f"Активные LoRA:\n\n"
             for lora in loras:
-                resp += f"{lora.name}:{lora.strength}\n"
+                resp += f"{lora['name']}:{lora['model']}\n"
             await message.answer(resp)
         else:
             await message.answer("У вас нет активных LoRA.")
         return None
-    if message.text.lower().replace("/lora ", "") == "clear":
+    if message.text.lower().removeprefix("/lora ") == "clear":
         async with aiofiles.open("users.mpk", "rb") as f:
             users = msgspec.msgpack.decode((await f.read()), type=models.Users)
         user = users.get_user(message.from_user.id)
@@ -187,7 +171,7 @@ async def cmd_lora(message: types.Message):
         loras = []
         for name in selected.keys():
             strength = selected[name]
-            lora = models.LoraSettings(name, strength)
+            lora = dict(name=name, strength=strength)
             loras.append(lora)
         async with aiofiles.open("users.mpk", "rb") as f:
             users = msgspec.msgpack.decode((await f.read()), type=models.Users)
@@ -197,25 +181,56 @@ async def cmd_lora(message: types.Message):
             await f.write(msgspec.msgpack.encode(users))
         resp = f"Активные LoRA:\n\n"
         for lora in loras:
-            resp += f"{lora.name}:{lora.strength}\n"
+            resp += f"{lora['name']}:{lora['model']}\n"
+        await message.answer(resp)
+
+@dp.message(Command("tis"))
+async def cmd_lora(message: types.Message):
+    if message.text.lower().strip() == "/tis":
+        async with aiofiles.open("users.mpk", "rb") as f:
+            users = msgspec.msgpack.decode((await f.read()), type=models.Users)
+        user = users.get_user(message.from_user.id)
+        tis = user.generation_settings.tis
+        if len(tis) >= 1:
+            resp = f"Активные TIs:\n\n"
+            for ti in tis:
+                resp += f"{ti['name']}:{ti['strength']}\n"
+            await message.answer(resp)
+        else:
+            await message.answer("У вас нет активных TIs.")
+        return None
+    if message.text.lower().removeprefix("/tis ") == "clear":
+        async with aiofiles.open("users.mpk", "rb") as f:
+            users = msgspec.msgpack.decode((await f.read()), type=models.Users)
+        user = users.get_user(message.from_user.id)
+        user.generation_settings.tis = []
+        async with aiofiles.open("users.mpk", "wb") as f:
+            await f.write(msgspec.msgpack.encode(users))
+        await message.answer("TIs очищены")
+        return None
+    selected = parse_tis(message.text.replace("/tis ", ""))
+    if selected is None:
+        await message.answer("Ошибка! Не удалось найти TI.")
+    else:
+        tis = []
+        for name in selected.keys():
+            strength = selected[name]
+            ti = dict(name=name, strength=strength)
+            tis.append(ti)
+        async with aiofiles.open("users.mpk", "rb") as f:
+            users = msgspec.msgpack.decode((await f.read()), type=models.Users)
+        user = users.get_user(message.from_user.id)
+        user.generation_settings.tis = tis
+        async with aiofiles.open("users.mpk", "wb") as f:
+            await f.write(msgspec.msgpack.encode(users))
+        resp = f"Активные TIs:\n\n"
+        for ti in tis:
+            resp += f"{ti['name']}:{ti['strength']}\n"
         await message.answer(resp)
 
 @dp.message(Command("help"))
 async def cmd_help(message: types.Message):
     await message.answer("Руководство: https://telegra.ph/Kak-polzovatsya-HordeAI-Bot-10-21\nУсловия использования: https://telegra.ph/Usloviya-ispolzovaniya--HordeAI-Bot-11-26")
-
-@dp.message(Command("add_lora"))
-async def cmd_add_lora(message: types.Message):
-    if "civitai.com/models/" in message.text:
-        await message.forward(admin)
-        await message.answer("Спасибо! В ближайшее время мы добавим LoRA.")
-    elif str(message.from_user.id) == admin and message.text.split()[1].isdigit():
-        async with aiofiles.open("loras.txt", "a") as f:
-            model_id = message.text.split()[1]
-            await f.write(model_id + "\n")
-            await message.answer("LoRA добавлена.")
-    else:
-        await message.answer("Использование:\n/add_lora <ссылка на CivitAI> [примечание от себя].")
 
 @dp.message(Command("nsfw"))
 async def cmd_nsfw(message: types.Message):
@@ -361,11 +376,6 @@ async def handle_gif(message: types.Message):
             else:
                 model = [user.generation_settings.model]
             tis = load_tis(user.generation_settings.gif_prompt)
-            if user.generation_settings.loras is not None:
-                loras = []
-                for lora in user.generation_settings.loras:
-                    loras.append(ModelPayloadLorasStable(lora.name, model=lora.strength, is_version=True))
-            else: loras = None
             params = ModelGenerationInputStable(
                 sampler_name = "k_euler",
                 cfg_scale = user.generation_settings.cfg_scale,
@@ -378,8 +388,8 @@ async def handle_gif(message: types.Message):
                 return_control_map = False,
                 seed = str(seed),
                 clip_skip = 2,
-                tis = tis,
-                loras = loras
+                tis = user.generation_settings.tis,
+                loras = user.generation_settings.loras
             )
             payload = GenerationInput(
                 prompt = user.generation_settings.gif_prompt,
@@ -474,14 +484,6 @@ async def handle_photo(message: types.Message):
     async with aiofiles.open("users.mpk", "wb") as f:
         await f.write(msgspec.msgpack.encode(users))
     msg = await message.answer("Подождите...")
-    
-    if user.generation_settings.loras is not None:
-        loras = []
-        for lora in user.generation_settings.loras:
-            loras.append(ModelPayloadLorasStable(lora.name, model=lora.strength, is_version=True))
-    else: loras = None
-
-    tis = load_tis(message.caption)
 
     control_types = ["canny", "depth", "lineart", "hed", "normal", "openpose", "seg", "scribble", "fakescribbles", "hough"]
 
@@ -514,11 +516,11 @@ async def handle_photo(message: types.Message):
         height = height,
         width = width,
         steps = user.generation_settings.steps,
-        loras = loras,
+        loras = user.generation_settings.loras,
         n = user.generation_settings.n,
 #        post_processing = None,
         hires_fix = False,
-        tis = tis,
+        tis = user.generation_settings.tis,
         denoising_strength = 1.0 if image_is_control == True else user.generation_settings.strength,
         image_is_control = image_is_control,
         control_type = control_type,
@@ -741,11 +743,11 @@ async def cmd_image(message: types.Message):
         height = user.generation_settings.height,
         width = user.generation_settings.width,
         steps = user.generation_settings.steps,
-        loras = loras,
+        loras = user.generation_settings.loras,
         n = user.generation_settings.n,
         post_processing = post_processing,
         hires_fix = user.generation_settings.hires_fix,
-        tis = tis,
+        tis = user.generation_settings.tis,
         seed = user.generation_settings.seed
     )
 
@@ -854,6 +856,47 @@ async def cmd_steps(message: types.Message):
         await message.answer("Шаги: " + str(user.generation_settings.steps))
     else:
         pass
+    async with aiofiles.open("users.mpk", "wb") as f:
+        await f.write(msgspec.msgpack.encode(users))
+
+@dp.message(Command("style"))
+async def cmd_style(message: types.Message):
+    if len(message.text) < 9:
+        await message.answer("Использование: /style [style]")
+        return None
+    resp = requests.get("https://github.com/Haidra-Org/AI-Horde-Styles/raw/main/styles.json")
+    styles = resp.json()
+    if not message.text.removeprefix("/style ") in styles:
+        await message.answer("Стиль не найден.\n\nСписок стилей:\nhttps://t.me/HordeAI_Bot_CHAT/176", disable_web_page_preview=True)
+        return None
+    style = styles[message.text.removeprefix("/style ")]
+    async with aiofiles.open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode((await f.read()), type=models.Users)
+    user = users.get_user(message.from_user.id)
+    if user is None:
+        await message.answer("Вас нет в базе данных. Напишите /start, или обратитесь к @LapisMYT.")
+        return None
+    for opt in style:
+        if opt == "prompt":
+            user.settings.prompt_template = style["prompt"]
+        elif opt == "model":
+            user.settings.model = style["model"]
+        elif opt == "steps":
+            user.settings.steps = style["steps"]
+        elif opt == "width":
+            user.settings.width = style["width"]
+        elif opt == "height":
+            user.settings.height = style["height"]
+        elif opt == "cfg_scale":
+            user.settings.cfg_scale = style["cfg_scale"]
+        elif opt == "sampler_name":
+            user.settings.sampler = style["sampler_name"]
+        elif opt == "loras":
+            user.settings.loras = style["loras"]
+        elif opt == "tis":
+            user.settings.tis = style["tis"]
+        else:
+            await message.answer(f"Неизвестный параметр стиля: {opt}. Пожалуйста, сообщите об этом @LapisMYT.")
     async with aiofiles.open("users.mpk", "wb") as f:
         await f.write(msgspec.msgpack.encode(users))
 

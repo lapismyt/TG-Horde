@@ -1,15 +1,11 @@
 import msgspec
 
-class LoraSettings(msgspec.Struct):
-    name: str
-    strength: float = 0.85
-
 class GenerationSettings(msgspec.Struct):
     width: int = 512
     height: int = 512
     cfg_scale: float = 7.5
     steps: int = 20
-    loras: list[LoraSettings] | None = None
+    loras: list[dict]
     nsfw: bool = False
     model: str = "ANY"
     n: int = 1
@@ -19,6 +15,8 @@ class GenerationSettings(msgspec.Struct):
     strength: float = 0.7
     gif_prompt: str = "1girl ### EasyNegative, children"
     seed: int | str | None = None
+    prompt_template: str = "{p}###{np}"
+    tis: list[dict]
 
 class User(msgspec.Struct):
     id: int
