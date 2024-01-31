@@ -164,7 +164,7 @@ async def cmd_lora(message: types.Message):
         user = users.get_user(message.from_user.id)
         loras = user.generation_settings.loras
         if not ((loras is None) or (loras is list)):
-            user.generation_settings.loras = None
+            user.generation_settings.loras = []
             async with aiofiles.open("users.mpk", "wb") as f:
                 await f.write(msgspec.msgpack.encode(users))
             await message.answer("Попробуйте ещё раз или обратитесь к @LapisMYT")
@@ -944,6 +944,7 @@ async def cmd_style(message: types.Message):
             await message.answer(f"Неизвестный параметр стиля: {opt}. Пожалуйста, сообщите об этом @LapisMYT.")
     async with aiofiles.open("users.mpk", "wb") as f:
         await f.write(msgspec.msgpack.encode(users))
+    await message.answer(f"Стиль применён: {message.text.removeprefix('/style ')}")
 
 @dp.message(Command("cfg"))
 async def cmd_steps(message: types.Message):
