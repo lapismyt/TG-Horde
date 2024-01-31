@@ -917,23 +917,23 @@ async def cmd_style(message: types.Message):
         return None
     for opt in style:
         if opt == "prompt":
-            user.settings.prompt_template = style["prompt"]
+            user.generation_settings.prompt_template = style["prompt"]
         elif opt == "model":
-            user.settings.model = style["model"]
+            user.generation_settings.model = style["model"]
         elif opt == "steps":
-            user.settings.steps = style["steps"]
+            user.generation_settings.steps = style["steps"]
         elif opt == "width":
-            user.settings.width = style["width"]
+            user.generation_settings.width = style["width"]
         elif opt == "height":
-            user.settings.height = style["height"]
+            user.generation_settings.height = style["height"]
         elif opt == "cfg_scale":
-            user.settings.cfg_scale = style["cfg_scale"]
+            user.generation_settings.cfg_scale = style["cfg_scale"]
         elif opt == "sampler_name":
-            user.settings.sampler = style["sampler_name"]
+            user.generation_settings.sampler = style["sampler_name"]
         elif opt == "loras":
-            user.settings.loras = style["loras"]
+            user.generation_settings.loras = style["loras"]
         elif opt == "tis":
-            user.settings.tis = style["tis"]
+            user.generation_settings.tis = style["tis"]
         else:
             await message.answer(f"Неизвестный параметр стиля: {opt}. Пожалуйста, сообщите об этом @LapisMYT.")
     async with aiofiles.open("users.mpk", "wb") as f:
