@@ -274,7 +274,7 @@ async def cmd_template(message: types.Message):
         user.generation_settings.prompt_template = "{p}###{np}"
         await message.answer("Ваш шаблон сброшен.")
     else:
-        await message.answer(f"Ваш шаблон промпта: {user.generation_settings.prompt_template}\n\n{p} - промпт\n{np} - негативный промпт.")
+        await message.answer(f"Ваш шаблон промпта: {user.generation_settings.prompt_template}" + "\n\n{p} - промпт\n{np} - негативный промпт.")
 
 @dp.message(Command("stats"))
 async def cmd_stats(message: types.Message):
