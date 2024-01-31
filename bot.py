@@ -930,19 +930,15 @@ async def cmd_style(message: types.Message):
         elif opt == "sampler_name":
             user.generation_settings.sampler = style["sampler_name"]
         elif opt == "loras":
-            loras = style["loras"]
-            user.generation_settings.loras = []
-            for lora in loras:
+            user.generation_settings.loras = style["loras"]
+            for lora in user.generation_settings.loras:
                 if not "model" in lora.keys():
                     lora["model"] = 1
-                    user.generation_settings.loras.append(lora)
         elif opt == "tis":
-            tis = style["tis"]
-            user.generation_settings.tis = []
-            for ti in tis:
+            user.generation_settings.tis = style["tis"]
+            for ti in user.generation_settings.tis:
                 if not "strength" in ti.keys():
                     ti["strength"] = 1
-                    user.generation_settings.tis.append(ti)
         elif opt == "hires_fix":
             user.generation_settings.hires_fix = style["hires_fix"]
         elif opt == "karras":
