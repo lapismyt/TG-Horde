@@ -411,7 +411,6 @@ async def handle_gif(message: types.Message):
                 model = None
             else:
                 model = [user.generation_settings.model]
-            tis = load_tis(user.generation_settings.gif_prompt)
             params = ModelGenerationInputStable(
                 sampler_name = "k_euler",
                 cfg_scale = user.generation_settings.cfg_scale,
@@ -771,14 +770,6 @@ async def cmd_image(message: types.Message):
     async with aiofiles.open("users.mpk", "wb") as f:
         await f.write(msgspec.msgpack.encode(users))
     msg = await message.answer("Подождите...")
-    
-    if user.generation_settings.loras is not None:
-        loras = []
-        for lora in user.generation_settings.loras:
-            loras.append(ModelPayloadLorasStable(lora.name, model=lora.strength, is_version=True))
-    else: loras = None
-
-    tis = load_tis(message.text.removeprefix("/image "))
 
     post_processing = None # TODO
 
