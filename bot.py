@@ -931,6 +931,8 @@ async def cmd_style(message: types.Message):
             user.generation_settings.loras = style["loras"]
         elif opt == "tis":
             user.generation_settings.tis = style["tis"]
+        elif opt == "karras":
+            await message.answer("Стиль содержит неподдерживаемый на данный момент параметр karras, который будет проигнорирован. Стиль возможно будет работать не так, как задумано.")
         else:
             await message.answer(f"Неизвестный параметр стиля: {opt}. Пожалуйста, сообщите об этом @LapisMYT.")
     async with aiofiles.open("users.mpk", "wb") as f:
