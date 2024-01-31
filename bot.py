@@ -917,6 +917,8 @@ async def cmd_style(message: types.Message):
             user.generation_settings.prompt_template = style["prompt"]
         elif opt == "model":
             user.generation_settings.model = style["model"]
+            if "XL" in user.generation_settings.model:
+                user.generation_settings.hires_fix = False
         elif opt == "steps":
             user.generation_settings.steps = style["steps"]
         elif opt == "width":
@@ -929,7 +931,7 @@ async def cmd_style(message: types.Message):
             user.generation_settings.sampler = style["sampler_name"]
         elif opt == "loras":
             loras = style["loras"]
-            user.generation_settings.tis = []
+            user.generation_settings.loras = []
             for lora in loras:
                 if not "model" in lora.keys():
                     lora["model"] = 1
