@@ -5,7 +5,7 @@ class GenerationSettings(msgspec.Struct):
     height: int = 512
     cfg_scale: float = 7.5
     steps: int = 20
-    loras: list[dict] = []
+    loras: None | list[dict] = []
     nsfw: bool = False
     model: str = "ANY"
     n: int = 1
@@ -16,7 +16,13 @@ class GenerationSettings(msgspec.Struct):
     gif_prompt: str = "1girl ### EasyNegative, children"
     seed: int | str | None = None
     prompt_template: str = "{p}###{np}"
-    tis: list[dict] = []
+    tis: None | list[dict] = []
+
+    def __post_init__(self):
+        if self.loras is None:
+            self.loras = []
+        if self.tis is None:
+            self.tis = []
 
 class User(msgspec.Struct):
     id: int
