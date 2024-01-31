@@ -96,8 +96,8 @@ def parse_tis(text):
 
 def format_prompt(prompt, template):
     splitter = " ### "
-    p = "something"
-    np = "lowres"
+    p = ""
+    np = ""
     if splitter in prompt:
         p = prompt.split(" ### ")[0]
         np = prompt.split(" ### ")[1]
