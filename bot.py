@@ -92,6 +92,20 @@ def parse_tis(text):
     if out == []: out = None
         return out
 
+def format_prompt(prompt, template):
+    splitter = " ### "
+    p = "something"
+    np = "lowres"
+    if splitter in prompt:
+        p = prompt.split(" ### ")[0]
+        np = prompt.split(" ### ")[1]
+    else:
+        p = prompt
+    if "{np}" in template:
+        return template.format(p=p, np=np)
+    else:
+        return template.format(p=p)
+
 @dp.message(Command("ask"))
 async def cmd_ask(message: types.Message):
     model = "gpt-4"
@@ -246,6 +260,20 @@ async def cmd_nsfw(message: types.Message):
     async with aiofiles.open("users.mpk", "wb") as f:
         await f.write(msgspec.msgpack.encode(users))
 
+@dp.message(Command("template"))
+async def cmd_template(message: types.Message):
+    async with aiofiles.open("users.mpk", "rb") as f:
+        users = msgspec.msgpack.decode((await f.read()), type=models.Users)
+    user = users.get_user(message.from_user.id)
+    if user is None:
+        await message.answer("Вас нет в базе данных. Попробуйте написать /start, или обратитесь к @LapisMYT.")
+        return None
+    if message.text.lower() == "/template clear":
+        user.generation_settings.prompt_template = "{p}###{np}"
+        await message.answer("Ваш шаблон сброшен.")
+    else:
+        await message.answer(f"Ваш шаблон промпта: {user.generation_settings.prompt_template}\n\n{p} - промпт\n{np} - негативный промпт.")
+
 @dp.message(Command("stats"))
 async def cmd_stats(message: types.Message):
     async with aiofiles.open("users.mpk", "rb") as f:
@@ -392,7 +420,7 @@ async def handle_gif(message: types.Message):
                 loras = user.generation_settings.loras
             )
             payload = GenerationInput(
-                prompt = user.generation_settings.gif_prompt,
+                prompt = format_prompt(user.generation_settings.gif_prompt, user.generation_settings.prompt_template),
                 params = params,
                 nsfw = user.generation_settings.nsfw,
                 censor_nsfw = not user.generation_settings.nsfw,
@@ -535,7 +563,7 @@ async def handle_photo(message: types.Message):
         model = [model]
 
     payload = GenerationInput(
-        prompt = prompt,
+        prompt = format_prompt(prompt, user.generation_settings.prompt_template),
         params = params,
         nsfw = user.generation_settings.nsfw,
         censor_nsfw = not user.generation_settings.nsfw,
@@ -671,7 +699,7 @@ async def cmd_model(message: types.Message):
 @dp.message(Command("sampler"))
 async def cmd_sampler(message: types.Message):
     global samplers
-    if message.text.lower().strip().replace("/sampler ", "") in samplers:
+    if message.text.lower().removeprefix("/sampler ") in samplers:
         async with aiofiles.open("users.mpk", "rb") as f:
             users = msgspec.msgpack.decode((await f.read()), type=models.Users)
         user = users.get_user(message.from_user.id)
@@ -681,6 +709,15 @@ async def cmd_sampler(message: types.Message):
         async with aiofiles.open("users.mpk", "wb") as f:
             await f.write(msgspec.msgpack.encode(users))
         await message.answer("Сэмплер изменён.")
+    elif message.text.lower() == "/sampler":
+        async with aiofiles.open("users.mpk", "rb") as f:
+            users = msgspec.msgpack.decode((await f.read()), type=models.Users)
+        user = users.get_user(message.from_user.id)
+        if user is None:
+            await message.answer("Вас нет в базе данных. Попробуйте написать /start, или обратитесь к @LapisMYT.")
+        else:
+            await message.answer(f"Активный сэмплер: {user.generation_settings.sampler}.")
+            return None
     else:
         await message.answer("Сэмплер не найден.\nДоступные сэмплеры:\n"+"\n".join(samplers))
 
@@ -758,7 +795,7 @@ async def cmd_image(message: types.Message):
         model = [model]
 
     payload = GenerationInput(
-        prompt = message.text.removeprefix("/image "),
+        prompt = format_prompt(message.text.removeprefix("/image "), user.generation_settings.prompt_template),
         params = params,
         nsfw = user.generation_settings.nsfw,
         censor_nsfw = not user.generation_settings.nsfw,
