@@ -71,7 +71,8 @@ def parse_loras(text):
                 print(repr(err))
                 return None
     out = {item.split(":")[0]: float(item.split(":")[1]) for item in text.split()}
-    if out == []: out = None
+    if out == []:
+        out = None
     return out
 
 def parse_tis(text):
@@ -89,8 +90,9 @@ def parse_tis(text):
                 print(repr(err))
                 return None
     out = {item.split(":")[0]: float(item.split(":")[1]) for item in text.split()}
-    if out == []: out = None
-        return out
+    if out == []:
+        out = None
+    return out
 
 def format_prompt(prompt, template):
     splitter = " ### "
