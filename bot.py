@@ -163,12 +163,11 @@ async def cmd_lora(message: types.Message):
             users = msgspec.msgpack.decode((await f.read()), type=models.Users)
         user = users.get_user(message.from_user.id)
         loras = user.generation_settings.loras
-        if not (loras is list):
+        if not (isinstance(loras, list)):
             user.generation_settings.loras = []
             async with aiofiles.open("users.mpk", "wb") as f:
                 await f.write(msgspec.msgpack.encode(users))
             await message.answer("Попробуйте ещё раз или обратитесь к @LapisMYT")
-            print(loras)
             return None
         if len(loras) >= 1:
             resp = f"Активные LoRA:\n\n"
