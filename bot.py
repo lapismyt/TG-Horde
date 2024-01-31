@@ -168,6 +168,7 @@ async def cmd_lora(message: types.Message):
             async with aiofiles.open("users.mpk", "wb") as f:
                 await f.write(msgspec.msgpack.encode(users))
             await message.answer("Попробуйте ещё раз или обратитесь к @LapisMYT")
+            print(loras)
             return None
         if len(loras) >= 1:
             resp = f"Активные LoRA:\n\n"
