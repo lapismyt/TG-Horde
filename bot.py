@@ -279,6 +279,8 @@ async def cmd_template(message: types.Message):
     if message.text.lower() == "/template clear":
         user.generation_settings.prompt_template = "{p}###{np}"
         await message.answer("Ваш шаблон сброшен.")
+        async with aiofiles.open("users.mpk", "wb") as f:
+            await f.write(msgspec.msgpack.encode(users))
     else:
         await message.answer(f"Ваш шаблон промпта: {user.generation_settings.prompt_template}" + "\n\n{p} - промпт\n{np} - негативный промпт.")
 
