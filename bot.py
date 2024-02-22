@@ -107,7 +107,7 @@ def format_prompt(prompt, template):
         p = prompt
     if "{np}" in template:
         return template.format(p=p, np=np)
-    else:q
+    else:
         return template.format(p=p)
 
 @dp.message(Command("ask"))
