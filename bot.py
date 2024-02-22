@@ -192,11 +192,7 @@ async def cmd_lora(message: types.Message):
     if selected is None:
         await message.answer("Ошибка! Не удалось найти LoRA.")
     else:
-        loras = []
-        for name in selected.keys():
-            strength = selected[name]
-            lora = dict(name=name, model=strength, is_version=False)
-            loras.append(lora)
+        loras = selected
         async with aiofiles.open("users.mpk", "rb") as f:
             users = msgspec.msgpack.decode((await f.read()), type=models.Users)
         user = users.get_user(message.from_user.id)
