@@ -77,7 +77,7 @@ def parse_loras(text):
         out = None
     return out
 
-def parse_tis(text):s
+def parse_tis(text):
     for item in text.split():
         if False:
             return None
