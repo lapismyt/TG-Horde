@@ -171,7 +171,9 @@ async def cmd_lora(message: types.Message):
                 await f.write(msgspec.msgpack.encode(users))
             await message.answer("Попробуйте ещё раз или обратитесь к @LapisMYT")
             return None
-        for lora in loras:                                                                          name = lora.get('name', 'null')                                                         model = lora.get('model', 'null')
+        for lora in loras:
+            name = lora.get('name', 'null')
+            model = lora.get('model', 'null')
             resp += f"{name}:{model}\n"
             await message.answer(resp)
         else:
