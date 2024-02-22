@@ -66,7 +66,7 @@ def parse_loras(text):
                 if not resp.status_code == 200:
                     return None
                 if not resp.json()["model"]["type"] == "LORA":
-                    ţreturn None
+                    return None
             except BaseException as err:
                 print(repr(err))
                 return None
