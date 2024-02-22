@@ -870,6 +870,7 @@ async def cmd_image(message: types.Message):
         await f.write(msgspec.msgpack.encode(users))
 
     img_status = await horde.generate_status(request.id)
+    print(img_status)
     generations = img_status.generations
     await msg.delete()
     for num, generation in enumerate(generations):
