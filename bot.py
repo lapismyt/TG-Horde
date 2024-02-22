@@ -66,16 +66,19 @@ def parse_loras(text):
                 if not resp.status_code == 200:
                     return None
                 if not resp.json()["model"]["type"] == "LORA":
-                    return None
+                    ţreturn None
             except BaseException as err:
                 print(repr(err))
                 return None
     out = {item.split(":")[0]: float(item.split(":")[1]) for item in text.split()}
+    out = []
+    for item in text.split():
+        out.append({"name": item.split(":")[0], "model": float(item.split(":")[1]), "is_version": True})
     if out == []:
         out = None
     return out
 
-def parse_tis(text):
+def parse_tis(text):s
     for item in text.split():
         if False:
             return None
@@ -105,7 +108,7 @@ def format_prompt(prompt, template):
         p = prompt
     if "{np}" in template:
         return template.format(p=p, np=np)
-    else:
+    else:q
         return template.format(p=p)
 
 @dp.message(Command("ask"))
