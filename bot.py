@@ -201,7 +201,9 @@ async def cmd_lora(message: types.Message):
             await f.write(msgspec.msgpack.encode(users))
         resp = f"Активные LoRA:\n\n"
         for lora in loras:
-            resp += f"{lora['name']}:{lora['model']}\n"
+            name = lora.get('name', 'null')
+            model = lora.get('model', 'null')
+            resp += f"{name}:{model}\n"
         await message.answer(resp)
 
 @dp.message(Command("tis"))
