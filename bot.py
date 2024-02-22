@@ -62,7 +62,7 @@ def parse_loras(text):
             return None
         else:
             try:
-                resp = requests.get(f"https://civitai.com/api/v1/model-versions/{item.split(':')[0]}")
+                resp = requests.get(f"https://civitai.com/api/v1/models/{item.split(':')[0]}")
                 if not resp.status_code == 200:
                     return None
                 if not resp.json()["model"]["type"] == "LORA":
@@ -193,7 +193,7 @@ async def cmd_lora(message: types.Message):
         loras = []
         for name in selected.keys():
             strength = selected[name]
-            lora = dict(name=name, model=strength)
+            lora = dict(name=name, model=strength, is_version=False)
             loras.append(lora)
         async with aiofiles.open("users.mpk", "rb") as f:
             users = msgspec.msgpack.decode((await f.read()), type=models.Users)
