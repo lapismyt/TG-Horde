@@ -70,7 +70,6 @@ def parse_loras(text):
             except BaseException as err:
                 print(repr(err))
                 return None
-    out = {item.split(":")[0]: float(item.split(":")[1]) for item in text.split()}
     out = []
     for item in text.split():
         out.append({"name": item.split(":")[0], "model": float(item.split(":")[1]), "is_version": True})
