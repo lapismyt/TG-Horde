@@ -177,6 +177,7 @@ async def cmd_lora(message: types.Message):
             model = lora.get('model', 'null')
             resp += f"{name}:{model}\n"
             await message.answer(resp)
+            return None
         else:
             await message.answer("У вас нет активных LoRA.")
         return None
