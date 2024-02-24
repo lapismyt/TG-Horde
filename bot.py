@@ -62,7 +62,7 @@ def parse_loras(text):
             return None
         else:
             try:
-                resp = requests.get(f"https://civitai.com/api/v1/models/{item.split(':')[0]}")
+                resp = requests.get(f"https://civitai.com/api/v1/model-versions/{item.split(':')[0]}")
                 if not resp.status_code == 200:
                     return None
                 if not resp.json()["type"] == "LORA":
@@ -72,7 +72,7 @@ def parse_loras(text):
                 return None
     out = []
     for item in text.split():
-        out.append({"name": item.split(":")[0], "model": float(item.split(":")[1]), "is_version": False})
+        out.append({"name": item.split(":")[0], "model": float(item.split(":")[1]), "is_version": True})
     if out == []:
         out = None
     return out
