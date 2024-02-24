@@ -65,7 +65,7 @@ def parse_loras(text):
                 resp = requests.get(f"https://civitai.com/api/v1/model-versions/{item.split(':')[0]}")
                 if not resp.status_code == 200:
                     return None
-                if not resp.json()["type"] == "LORA":
+                if not resp.json()["model"]["type"] == "LORA":
                     return None
             except BaseException as err:
                 print(repr(err))
