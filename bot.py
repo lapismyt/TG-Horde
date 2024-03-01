@@ -96,6 +96,16 @@ def parse_tis(text):
         out = None
     return out
 
+def find_model_versions(model_id):
+    resp = requests.get(f"https://civitai.com/api/v1/models/{model_id}")
+    if not resp.status_code == 200:
+        return None
+    content = resp.json()
+    ids = {}
+    for ver in content["modelVersions"]:
+        ids[ver["id"]] = ver["name"]
+    return ids
+
 def format_prompt(prompt, template):
     splitter = " ### "
     p = ""
@@ -109,6 +119,21 @@ def format_prompt(prompt, template):
         return template.format(p=p, np=np)
     else:
         return template.format(p=p)
+
+@dp.message(Command("version_ids"))
+async def cmd_ver_ids(message: types.Message):
+    if len(message.text) < 15:
+        await message.answer("Использование:\n/version_ids [model_id]")
+        return None
+    model = message.text.split()[1]
+    versions = find_model_versions(model_id)
+    if versions is None:
+        await message.answer("Ничего не найдено.")
+        return None
+    vlist = ""
+    for vid in versions.keys():
+        vlist += f"{vid}:{versions[vid]}\n"
+    await message.answer(f"Версии модели:\nvlist.strip()")
 
 @dp.message(Command("ask"))
 async def cmd_ask(message: types.Message):
