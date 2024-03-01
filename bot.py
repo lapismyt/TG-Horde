@@ -132,7 +132,7 @@ async def cmd_ver_ids(message: types.Message):
         return None
     vlist = ""
     for vid in versions.keys():
-        vlist += f"{vid}:{versions[vid]}\n"
+        vlist += f"{versions[vid]} - {vid}\n"
     await message.answer(f"Версии модели:\n{vlist.strip()}")
 
 @dp.message(Command("ask"))
