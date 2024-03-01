@@ -125,7 +125,7 @@ async def cmd_ver_ids(message: types.Message):
     if len(message.text) < 15:
         await message.answer("Использование:\n/version_ids [model_id]")
         return None
-    model = message.text.split()[1]
+    model_id = message.text.split()[1]
     versions = find_model_versions(model_id)
     if versions is None:
         await message.answer("Ничего не найдено.")
